@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"flag"
 	"log"
 	"math/big"
 	"time"
@@ -14,7 +15,15 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+var (
+	host = flag.String("host", "localhost", "host to dial into")
+	port = flag.String("port", "3000", "server port")
+)
+
 func main() {
+	// parse flags
+	flag.Parse()
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	tlsConf, err := generateTLS()
@@ -22,20 +31,25 @@ func main() {
 		log.Fatal(err)
 	}
 	tlsConf.InsecureSkipVerify = true
-	conn, err := quic.DialAddrContext(ctx, ":3000", tlsConf, &quic.Config{})
+
+	addr := *host + ":" + *port
+	conn, err := quic.DialAddrContext(ctx, addr, tlsConf, &quic.Config{})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+
 	stream, err := conn.OpenStream()
 	if err != nil {
-		panic(err)
+		conn.CloseWithError(quic.ApplicationErrorCode(quic.StreamStateError), "failed to open a stream")
+		log.Fatal(err)
 	}
 	peerCtx := stream.Context()
+commloop:
 	for {
 		select {
 		case <-peerCtx.Done():
 			log.Println("Gracefully shutting down an app")
-			return
+			break commloop
 		default:
 			n, err := stream.Write([]byte("hello world!"))
 			if err != nil {
@@ -51,6 +65,9 @@ func main() {
 			time.Sleep(time.Second * 2)
 		}
 	}
+
+	// gracefully terminate connection
+	conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "closed")
 }
 
 func generateTLS() (*tls.Config, error) {
