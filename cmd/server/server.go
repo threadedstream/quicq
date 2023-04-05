@@ -76,13 +76,13 @@ func handleConnection(wg *sync.WaitGroup, conn quic.Connection) {
 			var p [512]byte
 			_, err = stream.Read(p[:])
 			if err != nil {
-				log.Println("Failed to read a message: " + err.Error())
+				log.Printf("[%s] Failed to read a message: %s\n", conn.RemoteAddr().String(), err.Error())
 				continue
 			}
 			log.Printf("[%s] => %s\n", conn.RemoteAddr().String(), string(p[:]))
 			// write the message back
 			if _, err = stream.Write(p[:]); err != nil {
-				log.Println("Failed to write a message: " + err.Error())
+				log.Printf("[%s] Failed to write a message: %s\n", conn.RemoteAddr().String(), err.Error())
 				continue
 			}
 		}
@@ -93,10 +93,10 @@ func main() {
 	tlsConf, err := generateTLS()
 	if err != nil {
 		log.Fatal(err)
-
 	}
 	quicConf := quic.Config{}
-	listener, err := quic.ListenAddr(":3000", tlsConf, &quicConf)
+	addr := "0.0.0.0:3000"
+	listener, err := quic.ListenAddr(addr, tlsConf, &quicConf)
 	if err != nil {
 		panic(err)
 	}
@@ -125,7 +125,7 @@ func main() {
 		}
 	}()
 
-	log.Println("start accepting connections")
+	log.Println("start accepting connections on " + addr)
 	for {
 		select {
 		case <-ctx.Done():
