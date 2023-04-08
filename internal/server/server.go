@@ -7,27 +7,21 @@ import (
 	"github.com/threadedstream/quicthing/internal/conn"
 )
 
-type Connection interface{}
-
-type Stream interface {
-	Send([]byte) error
-	Rcv() ([]byte, error)
-}
-
 type Server interface {
 	Serve(addr string) error
-	AcceptStream() (Stream, error)
-	AcceptClient(context.Context) (Connection, error)
+	AcceptClient(context.Context) (conn.Connection, error)
+	Handle(command any) (any, error)
+	Shutdown() error
 	Close() error
 }
 
-type QuicServer struct {
+type QuicQServer struct {
 	quic.Connection
 	listener            quic.Listener
 	onShutdownCallbacks []func()
 }
 
-func (qs *QuicServer) Serve(addr string) error {
+func (qs *QuicQServer) Serve(addr string) error {
 	tlsFn := conn.DefaultGenerateTLSFunc()
 	tlsConf, err := tlsFn()
 	if err != nil {
@@ -39,13 +33,26 @@ func (qs *QuicServer) Serve(addr string) error {
 		panic(err)
 	}
 	qs.listener = listener
+	// close listener upon shutdown
+	qs.onShutdownCallbacks = append(qs.onShutdownCallbacks, func() {
+		qs.listener.Close()
+	})
 	return nil
 }
 
-func (qs *QuicServer) AcceptStream() (Stream, error) {
-	return nil, nil
+func (qs *QuicQServer) AcceptClient(ctx context.Context) (conn.Connection, error) {
+	quicConn, err := qs.listener.Accept(ctx)
+	if nil != err {
+		return nil, err
+	}
+	quicQConn := &conn.QuicQConn{Connection: quicConn}
+	return quicQConn, nil
 }
 
-func (qs *QuicServer) AcceptClient(ctx context.Context) (Connection, error) {
-	return qs.listener.Accept(ctx)
+func (qs *QuicQServer) Shutdown() error {
+	// execute each on-shutdown callback
+	for _, cb := range qs.onShutdownCallbacks {
+		cb()
+	}
+	return qs.listener.Close()
 }

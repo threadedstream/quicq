@@ -1,21 +1,89 @@
 package conn
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"math/big"
+	"net"
+
+	"github.com/quic-go/quic-go"
 )
 
-type Connection interface {
-	GenerateTLS() (*tls.Config, error)
-	Setup()
-	Send([]byte) error
-	Rcv() ([]byte, error)
+// Stream is a general stream interface used throughout the app
+type Stream interface {
+	Send([]byte) (int, error)
+	Rcv(p []byte) (int, error)
+	Context() context.Context
+	Close() error
 }
 
+// Connection is an interface to quic connection
+type Connection interface {
+	OpenStream() (Stream, error)
+	AcceptStream(context.Context) (Stream, error)
+	RemoteAddr() net.Addr
+}
+
+// QuicQConn is an implementation of Connection
+type QuicQConn struct {
+	quic.Connection
+}
+
+// AcceptStream accepts remote stream
+func (qc *QuicQConn) AcceptStream(ctx context.Context) (Stream, error) {
+	// TODO(threadedstream): reuse streams using memory pool?
+	stream, err := qc.Connection.AcceptStream(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &QuicQStream{Stream: stream}, nil
+}
+
+// OpenStream requests to initiate a quic stream
+func (qc *QuicQConn) OpenStream() (Stream, error) {
+	// TODO(threadedstream): reuse streams using memory pool?
+	stream, err := qc.Connection.OpenStream()
+	if err != nil {
+		return nil, err
+	}
+	return &QuicQStream{Stream: stream}, nil
+}
+
+// RemoteAddr returns remote address of a connected host
+func (qc *QuicQConn) RemoteAddr() net.Addr {
+	return qc.Connection.RemoteAddr()
+}
+
+// QuicQStream is a Stream implementation
+type QuicQStream struct {
+	quic.Stream
+}
+
+// Send sends data over a quic stream
+func (qs *QuicQStream) Send(p []byte) (int, error) {
+	return qs.Stream.Write(p)
+}
+
+// Rcv receives data from a quic stream
+func (qs *QuicQStream) Rcv(p []byte) (int, error) {
+	return qs.Stream.Read(p)
+}
+
+// Context returns stream's context
+func (qs *QuicQStream) Context() context.Context {
+	return qs.Stream.Context()
+}
+
+// Close closes underlying stream
+func (qs *QuicQStream) Close() error {
+	return qs.Stream.Close()
+}
+
+// DefaultGenerateTLSFunc generates a default in-memory tls config with no io access to external certificates
 func DefaultGenerateTLSFunc() func() (*tls.Config, error) {
 	return func() (*tls.Config, error) {
 		key, err := rsa.GenerateKey(rand.Reader, 1024)
