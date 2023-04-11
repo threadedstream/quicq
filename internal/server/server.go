@@ -11,6 +11,7 @@ type Server interface {
 	Serve(addr string) error
 	AcceptClient(context.Context) (conn.Connection, error)
 	Handle(command any) (any, error)
+	AddOnShutdownCallback(fn func())
 	Shutdown() error
 	Close() error
 }
@@ -28,7 +29,10 @@ func (qs *QuicQServer) Serve(addr string) error {
 		return err
 	}
 
-	listener, err := quic.ListenAddr(addr, tlsConf, &quic.Config{})
+	conf := &quic.Config{
+		EnableDatagrams: true,
+	}
+	listener, err := quic.ListenAddr(addr, tlsConf, conf)
 	if err != nil {
 		panic(err)
 	}
@@ -40,6 +44,7 @@ func (qs *QuicQServer) Serve(addr string) error {
 	return nil
 }
 
+// AcceptClient accepts remote client
 func (qs *QuicQServer) AcceptClient(ctx context.Context) (conn.Connection, error) {
 	quicConn, err := qs.listener.Accept(ctx)
 	if nil != err {
@@ -47,6 +52,10 @@ func (qs *QuicQServer) AcceptClient(ctx context.Context) (conn.Connection, error
 	}
 	quicQConn := &conn.QuicQConn{Connection: quicConn}
 	return quicQConn, nil
+}
+
+func (qs *QuicQServer) AddOnShutdownCallback(fn func()) {
+	qs.onShutdownCallbacks = append(qs.onShutdownCallbacks, fn)
 }
 
 func (qs *QuicQServer) Shutdown() error {

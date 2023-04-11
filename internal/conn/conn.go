@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"log"
 	"math/big"
 	"net"
 
@@ -25,12 +26,30 @@ type Stream interface {
 type Connection interface {
 	OpenStream() (Stream, error)
 	AcceptStream(context.Context) (Stream, error)
+	ReceiveDatagram() ([]byte, error)
+	SendDatagram([]byte) error
+	Log(format string, args ...any)
 	RemoteAddr() net.Addr
 }
 
 // QuicQConn is an implementation of Connection
 type QuicQConn struct {
 	quic.Connection
+}
+
+func (qc *QuicQConn) Log(format string, args ...any) {
+	fmt := "[" + qc.RemoteAddr().String() + "] => " + format
+	log.Printf(fmt, args...)
+}
+
+// ReceiveDatagram receives datagram from a peer
+func (qc *QuicQConn) ReceiveDatagram() ([]byte, error) {
+	return qc.Connection.ReceiveMessage()
+}
+
+// SendDatagram sends datagram to a peer
+func (qc *QuicQConn) SendDatagram(data []byte) error {
+	return qc.Connection.SendMessage(data)
 }
 
 // AcceptStream accepts remote stream

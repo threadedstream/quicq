@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	"github.com/threadedstream/quicthing/internal/conn"
@@ -19,6 +18,7 @@ import (
 
 var (
 	onShutdownCallbacks []func()
+	datagramsReceived   = 0
 )
 
 func getContents(path string) ([]byte, error) {
@@ -55,31 +55,45 @@ func loadTLSConfig(rootCertPaths ...string) (*tls.Config, error) {
 	return &tls.Config{RootCAs: pool}, nil
 }
 
-func handleConnection(wg *sync.WaitGroup, conn conn.Connection) {
-	// no need to use wait group for now
-	//defer wg.Done()
-	stream, err := conn.AcceptStream(context.Background())
+func handleConnection(ctx context.Context, conn conn.Connection) {
+	go func() {
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop
+			default:
+				msg, err := conn.ReceiveDatagram()
+				if err != nil {
+					continue
+				}
+				conn.Log("raw datagram: %s\n", string(msg))
+				datagramsReceived++
+			}
+		}
+	}()
+	stream, err := conn.AcceptStream(ctx)
 	if err != nil {
 		log.Println("ERROR: ", err.Error())
 		return
 	}
-	ctx := stream.Context()
+	streamCtx := stream.Context()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-streamCtx.Done():
 			stream.Close()
 			return
 		default:
 			var p [512]byte
 			_, err = stream.Rcv(p[:])
 			if err != nil {
-				log.Printf("[%s] Failed to read a message: %s\n", conn.RemoteAddr().String(), err.Error())
+				conn.Log("Failed to read a message: %s\n", err.Error())
 				continue
 			}
-			log.Printf("[%s] => %s\n", conn.RemoteAddr().String(), string(p[:]))
+			conn.Log("%s\n", string(p[:]))
 			// write the message back
 			if _, err = stream.Send(p[:]); err != nil {
-				log.Printf("[%s] Failed to write a message: %s\n", conn.RemoteAddr().String(), err.Error())
+				conn.Log("Failed to write a message: %s\n", err.Error())
 				continue
 			}
 		}
@@ -98,6 +112,10 @@ func main() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 	)
+
+	server.AddOnShutdownCallback(func() {
+		log.Println("datagrams received: ", datagramsReceived)
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -125,7 +143,7 @@ func main() {
 				continue
 			}
 			log.Printf("got a new connection: %s\n", conn.RemoteAddr().String())
-			go handleConnection(nil, conn)
+			go handleConnection(ctx, conn)
 		}
 	}
 }

@@ -94,13 +94,14 @@ Unsubscribe()
 Post()
 Poll() 
 
-Bibliography
-QUIC 
+**Bibliography**
+
 Prashant Kharat, Muralidhar Kulkarni, Modified QUIC protocol with congestion control for improved network performance, IET Communications https://ietresearch.onlinelibrary.wiley.com/doi/10.1049/cmu2.12154, Vol.5, Issue 9 1210-1222.
 
 Robin Marx, 2021, https://www.smashingmagazine.com/2021/08/http3-performance-improvements-part2.
 
+Puneet Kumar, QUIC - A Quick Study, arxiv.org, https://arxiv.org/pdf/2010.03059.pdf
 
-Message Queues
 Репозиторий с кодом rabbitmq сервера, https://github.com/rabbitmq/rabbitmq-server
+
 AMQP по-русски, 2009, https://habr.com/ru/articles/62502/ 
