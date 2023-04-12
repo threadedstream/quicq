@@ -102,6 +102,9 @@ Robin Marx, 2021, https://www.smashingmagazine.com/2021/08/http3-performance-imp
 
 Puneet Kumar, QUIC - A Quick Study, arxiv.org, https://arxiv.org/pdf/2010.03059.pdf
 
+Puneet Kumar and Behnam Dezfouli. Implementation and analysis of quic for mqtt.
+Computer Networks, 150:28–45, 2019, https://arxiv.org/pdf/1810.07730.pdf
+
 Репозиторий с кодом rabbitmq сервера, https://github.com/rabbitmq/rabbitmq-server
 
 AMQP по-русски, 2009, https://habr.com/ru/articles/62502/ 
