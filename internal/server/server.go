@@ -7,6 +7,7 @@ import (
 	"github.com/threadedstream/quicthing/internal/conn"
 )
 
+// Server is a common Server interface
 type Server interface {
 	Serve(addr string) error
 	AcceptClient(context.Context) (conn.Connection, error)
@@ -16,13 +17,14 @@ type Server interface {
 	Close() error
 }
 
-type QuicQServer struct {
+// QuicQServer is a quic server
+type QuicServer struct {
 	quic.Connection
 	listener            quic.Listener
 	onShutdownCallbacks []func()
 }
 
-func (qs *QuicQServer) Serve(addr string) error {
+func (qs *QuicServer) Serve(addr string) error {
 	tlsFn := conn.DefaultGenerateTLSFunc()
 	tlsConf, err := tlsFn()
 	if err != nil {
@@ -45,7 +47,7 @@ func (qs *QuicQServer) Serve(addr string) error {
 }
 
 // AcceptClient accepts remote client
-func (qs *QuicQServer) AcceptClient(ctx context.Context) (conn.Connection, error) {
+func (qs *QuicServer) AcceptClient(ctx context.Context) (conn.Connection, error) {
 	quicConn, err := qs.listener.Accept(ctx)
 	if nil != err {
 		return nil, err
@@ -54,11 +56,11 @@ func (qs *QuicQServer) AcceptClient(ctx context.Context) (conn.Connection, error
 	return quicQConn, nil
 }
 
-func (qs *QuicQServer) AddOnShutdownCallback(fn func()) {
+func (qs *QuicServer) AddOnShutdownCallback(fn func()) {
 	qs.onShutdownCallbacks = append(qs.onShutdownCallbacks, fn)
 }
 
-func (qs *QuicQServer) Shutdown() error {
+func (qs *QuicServer) Shutdown() error {
 	// execute each on-shutdown callback
 	for _, cb := range qs.onShutdownCallbacks {
 		cb()

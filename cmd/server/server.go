@@ -56,22 +56,6 @@ func loadTLSConfig(rootCertPaths ...string) (*tls.Config, error) {
 }
 
 func handleConnection(ctx context.Context, conn conn.Connection) {
-	go func() {
-	loop:
-		for {
-			select {
-			case <-ctx.Done():
-				break loop
-			default:
-				msg, err := conn.ReceiveDatagram()
-				if err != nil {
-					continue
-				}
-				conn.Log("raw datagram: %s\n", string(msg))
-				datagramsReceived++
-			}
-		}
-	}()
 	stream, err := conn.AcceptStream(ctx)
 	if err != nil {
 		log.Println("ERROR: ", err.Error())
@@ -102,7 +86,7 @@ func handleConnection(ctx context.Context, conn conn.Connection) {
 
 func main() {
 	addr := "0.0.0.0:3000"
-	server := &server.QuicQServer{}
+	server := &server.QuicServer{}
 	if err := server.Serve(addr); nil != err {
 		log.Fatal(err)
 	}
@@ -112,10 +96,6 @@ func main() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 	)
-
-	server.AddOnShutdownCallback(func() {
-		log.Println("datagrams received: ", datagramsReceived)
-	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 

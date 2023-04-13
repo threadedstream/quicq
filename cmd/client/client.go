@@ -15,10 +15,6 @@ var (
 	port = flag.String("port", "3000", "server port")
 )
 
-const (
-	datagramsToSend = 20000
-)
-
 func main() {
 	// parse flags
 	flag.Parse()
@@ -40,42 +36,33 @@ func main() {
 		log.Fatal(err)
 	}
 
-	failedDatagrams := 0
-	for i := 0; i < datagramsToSend; i++ {
-		if err = conn.SendMessage([]byte("hello unreliable server")); err != nil {
-			failedDatagrams++
+	stream, err := conn.OpenStream()
+	if err != nil {
+		conn.CloseWithError(quic.ApplicationErrorCode(quic.StreamStateError), "failed to open a stream")
+		log.Fatal(err)
+	}
+	peerCtx := stream.Context()
+commloop:
+	for {
+		select {
+		case <-peerCtx.Done():
+			log.Println("Gracefully shutting down an app")
+			break commloop
+		default:
+			n, err := stream.Write([]byte("hello world!"))
+			if err != nil {
+				log.Println("Failed to write a message: " + err.Error())
+				continue
+			}
+			log.Printf("%d bytes were written\n", n)
+			var p [512]byte
+			if _, err = stream.Read(p[:]); err != nil {
+				log.Println("Failed to read: " + err.Error())
+				continue
+			}
+			time.Sleep(time.Second * 2)
 		}
 	}
-
-	log.Println("datagrams sent: ", datagramsToSend-failedDatagrams)
-
-	// 	stream, err := conn.OpenStream()
-	// 	if err != nil {
-	// 		conn.CloseWithError(quic.ApplicationErrorCode(quic.StreamStateError), "failed to open a stream")
-	// 		log.Fatal(err)
-	// 	}
-	// 	peerCtx := stream.Context()
-	// commloop:
-	// 	for {
-	// 		select {
-	// 		case <-peerCtx.Done():
-	// 			log.Println("Gracefully shutting down an app")
-	// 			break commloop
-	// 		default:
-	// 			n, err := stream.Write([]byte("hello world!"))
-	// 			if err != nil {
-	// 				log.Println("Failed to write a message: " + err.Error())
-	// 				continue
-	// 			}
-	// 			log.Printf("%d bytes were written\n", n)
-	// 			var p [512]byte
-	// 			if _, err = stream.Read(p[:]); err != nil {
-	// 				log.Println("Failed to read: " + err.Error())
-	// 				continue
-	// 			}
-	// 			time.Sleep(time.Second * 2)
-	// 		}
-	// 	}
 
 	// gracefully terminate connection
 	conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "closed")
