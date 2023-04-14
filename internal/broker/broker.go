@@ -9,6 +9,7 @@ import (
 	"github.com/threadedstream/quicthing/internal/conn"
 	"github.com/threadedstream/quicthing/internal/protocol"
 	"github.com/threadedstream/quicthing/internal/server"
+	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 )
 
 const (
@@ -82,6 +83,7 @@ func (qb *QuicQBroker) handleConnection(ctx context.Context, conn conn.Connectio
 				continue
 			}
 			wellFormed := bytes.Trim(p[:], "\x00")
+			qb.decodeRequest()
 			// write the message back
 			if _, err = stream.Send(p[:]); err != nil {
 				conn.Log("Failed to write a message: %s\n", err.Error())
@@ -91,6 +93,6 @@ func (qb *QuicQBroker) handleConnection(ctx context.Context, conn conn.Connectio
 	}
 }
 
-func (qb *QuicQBroker) decodeRequest() *protocol.Request {
-	return nil
+func (qb *QuicQBroker) decodeRequest(bs []byte) *quicq.Request {
+
 }

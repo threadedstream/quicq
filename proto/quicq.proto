@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package quicq.v1;
+
+option go_package = "github.com/threadedstream/quicq/pkg/proto/quicq/v1;quicq";
+
+enum RequestType {
+  REQUEST_UNKNOWN = 0;
+  REQUEST_SUBSCRIBE = 1;
+  REQUEST_UNSUBSCRIBE = 2;
+}
+
+message Request {
+  RequestType requestType = 1;
+  oneof request {
+    SubscribeRequest subscribeRequest = 2;
+    UnsubscribeRequest unsubscribeRequest = 3;
+  }
+}
+
+message SubscribeRequest {
+  int64 publisherID = 1;
+  string topic = 2;
+}
+
+message UnsubscribeRequest {
+  int64 publisherID = 1;
+  string topic = 2;
+}
+
+message SubscribeResponse {
+  string topic = 1;
+  // add metadata? What is meant by metadata?
+}
+
+message UnsubscribeResponse {
+  string topic = 1;
+}
