@@ -25,7 +25,7 @@ type QuicServer struct {
 }
 
 func (qs *QuicServer) Serve(addr string) error {
-	tlsFn := conn.DefaultGenerateTLSFunc()
+	tlsFn := conn.QuicQTLSFunc()
 	tlsConf, err := tlsFn()
 	if err != nil {
 		return err

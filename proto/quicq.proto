@@ -10,6 +10,12 @@ enum RequestType {
   REQUEST_UNSUBSCRIBE = 2;
 }
 
+enum ResponseType {
+  RESPONSE_UNKNOWN = 0;
+  RESPONSE_SUBSCRIBE = 1;
+  RESPONSE_UNSUBSCRIBE = 2;
+}
+
 message Request {
   RequestType requestType = 1;
   oneof request {
@@ -18,13 +24,21 @@ message Request {
   }
 }
 
+message Response {
+  ResponseType responseType = 1;
+  oneof response {
+    SubscribeResponse subscribeResponse = 2;
+    UnsubscribeResponse unsubscribeResponse = 3;
+  }
+}
+
 message SubscribeRequest {
-  int64 publisherID = 1;
+  int64 consumerID = 1;
   string topic = 2;
 }
 
 message UnsubscribeRequest {
-  int64 publisherID = 1;
+  int64 consumerID = 1;
   string topic = 2;
 }
 

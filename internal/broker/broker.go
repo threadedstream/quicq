@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"log"
+	"sync"
 
 	"github.com/threadedstream/quicthing/internal/conn"
 	"github.com/threadedstream/quicthing/internal/protocol"
 	"github.com/threadedstream/quicthing/internal/server"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -26,12 +28,16 @@ type Broker interface {
 }
 
 type QuicQBroker struct {
-	server *server.QuicServer
+	server        *server.QuicServer
+	mu            *sync.Mutex
+	subscriptions map[int64][]string
 }
 
 func New() *QuicQBroker {
 	broker := &QuicQBroker{
-		server: new(server.QuicServer),
+		server:        new(server.QuicServer),
+		mu:            new(sync.Mutex),
+		subscriptions: make(map[int64][]string),
 	}
 	return broker
 }
@@ -82,8 +88,13 @@ func (qb *QuicQBroker) handleConnection(ctx context.Context, conn conn.Connectio
 				conn.Log("Failed to read a message: %s\n", err.Error())
 				continue
 			}
-			wellFormed := bytes.Trim(p[:], "\x00")
-			qb.decodeRequest()
+			bs := bytes.Trim(p[:], "\x00")
+			req, err := qb.decodeRequest(bs)
+			if err != nil {
+				stream.Send([]byte("gfy maaan"))
+				continue
+			}
+			qb.executeRequest(ctx, req)
 			// write the message back
 			if _, err = stream.Send(p[:]); err != nil {
 				conn.Log("Failed to write a message: %s\n", err.Error())
@@ -93,6 +104,45 @@ func (qb *QuicQBroker) handleConnection(ctx context.Context, conn conn.Connectio
 	}
 }
 
-func (qb *QuicQBroker) decodeRequest(bs []byte) *quicq.Request {
+func (qb *QuicQBroker) executeRequest(ctx context.Context, req *quicq.Request) {
+	switch req.GetRequestType() {
+	case quicq.RequestType_REQUEST_SUBSCRIBE:
+		qb.doSubscribe(req.GetSubscribeRequest())
+	case quicq.RequestType_REQUEST_UNSUBSCRIBE:
+		qb.doUnsubscribe(req.GetUnsubscribeRequest())
+	}
+}
 
+func (qb *QuicQBroker) doSubscribe(req *quicq.SubscribeRequest) (*quicq.Response, error) {
+	qb.mu.Lock()
+	defer qb.mu.Unlock()
+	qb.subscriptions[req.GetConsumerID()] = append(qb.subscriptions[req.GetConsumerID()], req.GetTopic())
+	return &quicq.Response{
+		ResponseType: quicq.ResponseType_RESPONSE_SUBSCRIBE,
+	}, nil
+}
+
+func (qb *QuicQBroker) doUnsubscribe(req *quicq.UnsubscribeRequest) (*quicq.Response, error) {
+	qb.mu.Lock()
+	defer qb.mu.Unlock()
+	topics := qb.subscriptions[req.GetConsumerID()]
+	for i := range topics {
+		if topics[i] == req.GetTopic() {
+			oldTopics := topics
+			topics = oldTopics[:i]
+			topics = append(topics, oldTopics[i+1:]...)
+		}
+	}
+
+	return &quicq.Response{
+		ResponseType: quicq.ResponseType_RESPONSE_UNSUBSCRIBE,
+	}, nil
+}
+
+func (qb *QuicQBroker) decodeRequest(bs []byte) (*quicq.Request, error) {
+	req := new(quicq.Request)
+	if err := proto.Unmarshal(bs, req); err != nil {
+		return nil, err
+	}
+	return req, nil
 }

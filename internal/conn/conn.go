@@ -103,7 +103,7 @@ func (qs *QuicQStream) Close() error {
 }
 
 // DefaultGenerateTLSFunc generates a default in-memory tls config with no io access to external certificates
-func DefaultGenerateTLSFunc() func() (*tls.Config, error) {
+func QuicQTLSFunc() func() (*tls.Config, error) {
 	return func() (*tls.Config, error) {
 		key, err := rsa.GenerateKey(rand.Reader, 1024)
 		if err != nil {

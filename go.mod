@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/quic-go/quic-go v0.33.0
 	github.com/stretchr/testify v1.5.1
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.30.0
 )
 
 require (
