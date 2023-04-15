@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/quic-go/quic-go"
 	"github.com/threadedstream/quicthing/internal/conn"
@@ -52,24 +51,18 @@ func (qc *QuicQClient) RequestStream() error {
 
 // Send sends data over a bus
 func (qc *QuicQClient) Send(data []byte) error {
-	n, err := qc.messageBus.Send(data)
+	_, err := qc.messageBus.Send(data)
 	if err != nil {
 		return err
-	}
-	if n != len(data) {
-		return fmt.Errorf("partial send!")
 	}
 	return nil
 }
 
 // Rcv receives data from a bus
 func (qc *QuicQClient) Rcv(data []byte) error {
-	n, err := qc.messageBus.Rcv(data)
+	_, err := qc.messageBus.Rcv(data)
 	if err != nil {
 		return err
-	}
-	if n != len(data) {
-		return fmt.Errorf("partial rcv!")
 	}
 	return nil
 }

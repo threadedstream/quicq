@@ -8,12 +8,14 @@ enum RequestType {
   REQUEST_UNKNOWN = 0;
   REQUEST_SUBSCRIBE = 1;
   REQUEST_UNSUBSCRIBE = 2;
+  REQUEST_FETCH_TOPIC_METADATA = 3;
 }
 
 enum ResponseType {
   RESPONSE_UNKNOWN = 0;
   RESPONSE_SUBSCRIBE = 1;
   RESPONSE_UNSUBSCRIBE = 2;
+  RESPONSE_FETCH_TOPIC_METADATA = 3;
 }
 
 message Request {
@@ -21,6 +23,7 @@ message Request {
   oneof request {
     SubscribeRequest subscribeRequest = 2;
     UnsubscribeRequest unsubscribeRequest = 3;
+    FetchTopicMetadataRequest fetchTopicMetadataRequest = 4;
   }
 }
 
@@ -29,6 +32,7 @@ message Response {
   oneof response {
     SubscribeResponse subscribeResponse = 2;
     UnsubscribeResponse unsubscribeResponse = 3;
+    FetchTopicMetadataResponse fetchTopicMetadataResponse = 4;
   }
 }
 
@@ -42,6 +46,10 @@ message UnsubscribeRequest {
   string topic = 2;
 }
 
+message FetchTopicMetadataRequest {
+  int64 consumerID = 1;
+}
+
 message SubscribeResponse {
   string topic = 1;
   // add metadata? What is meant by metadata?
@@ -49,4 +57,8 @@ message SubscribeResponse {
 
 message UnsubscribeResponse {
   string topic = 1;
+}
+
+message FetchTopicMetadataResponse {
+  repeated string topics = 1;
 }

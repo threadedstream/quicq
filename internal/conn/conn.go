@@ -123,8 +123,9 @@ func QuicQTLSFunc() func() (*tls.Config, error) {
 		}
 
 		return &tls.Config{
-			Certificates: []tls.Certificate{tlsCert},
-			NextProtos:   []string{"quicq"},
+			Certificates:       []tls.Certificate{tlsCert},
+			NextProtos:         []string{"quicq"},
+			InsecureSkipVerify: true,
 		}, nil
 	}
 }
