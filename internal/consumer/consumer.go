@@ -31,7 +31,7 @@ func New() *QuicQConsumer {
 	}
 }
 
-// Run runs consumer
+// Connect connects to broker
 func (qc *QuicQConsumer) Connect(ctx context.Context) error {
 	return qc.connect(ctx)
 }
