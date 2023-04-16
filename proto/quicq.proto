@@ -9,6 +9,7 @@ enum RequestType {
   REQUEST_SUBSCRIBE = 1;
   REQUEST_UNSUBSCRIBE = 2;
   REQUEST_FETCH_TOPIC_METADATA = 3;
+  REQUEST_POLL = 4;
 }
 
 enum ResponseType {
@@ -16,6 +17,7 @@ enum ResponseType {
   RESPONSE_SUBSCRIBE = 1;
   RESPONSE_UNSUBSCRIBE = 2;
   RESPONSE_FETCH_TOPIC_METADATA = 3;
+  RESPONSE_POLL = 4;
 }
 
 message Request {
@@ -24,6 +26,7 @@ message Request {
     SubscribeRequest subscribeRequest = 2;
     UnsubscribeRequest unsubscribeRequest = 3;
     FetchTopicMetadataRequest fetchTopicMetadataRequest = 4;
+    PollRequest pollRequest = 5;
   }
 }
 
@@ -33,6 +36,7 @@ message Response {
     SubscribeResponse subscribeResponse = 2;
     UnsubscribeResponse unsubscribeResponse = 3;
     FetchTopicMetadataResponse fetchTopicMetadataResponse = 4;
+    PollResponse pollResponse = 5;
   }
 }
 
@@ -60,5 +64,18 @@ message UnsubscribeResponse {
 }
 
 message FetchTopicMetadataResponse {
-  repeated string topics = 1;
+    repeated string topics = 1;
+}
+
+message PollRequest {
+  int64 consumerID = 1;
+}
+
+message PollResponse {
+  repeated Record records = 1;
+}
+
+message Record {
+  bytes key = 1;
+  bytes payload = 2;
 }

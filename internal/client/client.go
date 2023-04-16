@@ -31,11 +31,11 @@ func (qc *QuicQClient) Dial(ctx context.Context, addr string) error {
 	if err != nil {
 		return err
 	}
-	conn, err := quic.DialAddrContext(ctx, addr, tls, &quic.Config{})
+	c, err := quic.DialAddrContext(ctx, addr, tls, &quic.Config{})
 	if err != nil {
 		return err
 	}
-	qc.Connection = conn
+	qc.Connection = c
 	return nil
 }
 

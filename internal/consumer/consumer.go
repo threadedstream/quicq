@@ -16,6 +16,7 @@ type Consumer interface {
 	Subscribe(topic string) (*quicq.Response, error)
 	Unsubscribe(topic string) (*quicq.Response, error)
 	FetchTopicMetadata() (*quicq.Response, error)
+	Poll() (*quicq.Response, error)
 }
 
 // QuicQConsumer is a Consumer implementation
@@ -85,6 +86,19 @@ func (qc *QuicQConsumer) FetchTopicMetadata() (*quicq.Response, error) {
 			},
 		},
 	}
+	return qc.do(req)
+}
+
+func (qc *QuicQConsumer) Poll() (*quicq.Response, error) {
+	req := &quicq.Request{
+		RequestType: quicq.RequestType_REQUEST_POLL,
+		Request: &quicq.Request_PollRequest{
+			PollRequest: &quicq.PollRequest{
+				ConsumerID: qc.id,
+			},
+		},
+	}
+
 	return qc.do(req)
 }
 

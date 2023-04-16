@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/threadedstream/quicthing/internal/conn"
-	"github.com/threadedstream/quicthing/internal/protocol"
 	"github.com/threadedstream/quicthing/internal/queue"
 	"github.com/threadedstream/quicthing/internal/server"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
@@ -25,7 +24,6 @@ var (
 
 type Broker interface {
 	Run(context.Context) error
-	HandleCommand(context.Context, protocol.Request) error
 }
 
 type QuicQBroker struct {
@@ -122,7 +120,13 @@ func (qb *QuicQBroker) executeRequest(ctx context.Context, req *quicq.Request) (
 		return qb.doUnsubscribe(req.GetUnsubscribeRequest())
 	case quicq.RequestType_REQUEST_FETCH_TOPIC_METADATA:
 		return qb.doFetchTopicMetadata(req.GetFetchTopicMetadataRequest())
+	case quicq.RequestType_REQUEST_POLL:
+		return qb.doPoll(req.GetPollRequest())
 	}
+}
+
+func (qb *QuicQBroker) doPoll(req *quicq.PollRequest) (*quicq.Response, error) {
+	return nil, nil
 }
 
 func (qb *QuicQBroker) doFetchTopicMetadata(req *quicq.FetchTopicMetadataRequest) (*quicq.Response, error) {
