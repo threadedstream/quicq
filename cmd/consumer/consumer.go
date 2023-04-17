@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"time"
 
 	"github.com/threadedstream/quicthing/internal/consumer"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
@@ -30,23 +31,19 @@ func main() {
 	}
 	log.Printf("Got response with response type %s", quicq.ResponseType_name[int32(resp.GetResponseType())])
 
-	resp, err = c.Subscribe("news-feed")
-	if err != nil {
-		log.Fatal(err)
+	for {
+		time.Sleep(2 * time.Second)
+		resp, err = c.Poll()
+		if err != nil {
+			log.Printf("error: %s", err.Error())
+			continue
+		}
+		go handleRecords(resp.GetPollResponse().GetRecords())
 	}
-	log.Printf("Got response with response type %s", quicq.ResponseType_name[int32(resp.GetResponseType())])
+}
 
-	resp, err = c.Unsubscribe("news-feed")
-	if err != nil {
-		log.Fatal(err)
+func handleRecords(records []*quicq.Record) {
+	for _, rec := range records {
+		log.Printf("> [%s] => %s", rec.GetKey(), rec.GetPayload())
 	}
-	log.Printf("Got response with response type %s", quicq.ResponseType_name[int32(resp.GetResponseType())])
-
-	if resp, err = c.FetchTopicMetadata(); err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("Got response with response type %s", quicq.ResponseType_name[int32(resp.GetResponseType())])
-
-	fetchMdResp := resp.GetFetchTopicMetadataResponse()
-	log.Printf("Topics: %v", fetchMdResp.GetTopics())
 }

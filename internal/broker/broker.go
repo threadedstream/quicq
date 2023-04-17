@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/threadedstream/quicthing/internal/topic"
 	"log"
 	"sync"
 
 	"github.com/threadedstream/quicthing/internal/conn"
-	"github.com/threadedstream/quicthing/internal/queue"
 	"github.com/threadedstream/quicthing/internal/server"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 	"google.golang.org/protobuf/proto"
@@ -16,6 +16,7 @@ import (
 
 const (
 	defaultBrokerAddr = "0.0.0.0:9999"
+	queueSizeMax      = 256
 )
 
 var (
@@ -27,18 +28,21 @@ type Broker interface {
 }
 
 type QuicQBroker struct {
-	server        *server.QuicServer
-	mu            *sync.Mutex
-	subscriptions map[int64][]string
-	internalQ     *queue.LLQ
+	server              *server.QuicServer
+	mu                  *sync.Mutex
+	subscriptions       map[int64][]string
+	topics              []topic.Topic
+	topicQueryMap       map[string]topic.Topic
+	currentRecordOffset int64
 }
 
 func New() *QuicQBroker {
 	broker := &QuicQBroker{
 		server:        new(server.QuicServer),
 		mu:            new(sync.Mutex),
+		topics:        make([]topic.Topic, 0),
 		subscriptions: make(map[int64][]string),
-		internalQ:     queue.New(nil),
+		topicQueryMap: make(map[string]topic.Topic),
 	}
 	return broker
 }
@@ -51,7 +55,6 @@ func (qb *QuicQBroker) run(ctx context.Context) error {
 	if e := qb.server.Serve(defaultBrokerAddr); e != nil {
 		log.Fatalf("unable to serve: %s", e.Error())
 	}
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -71,11 +74,23 @@ func (qb *QuicQBroker) run(ctx context.Context) error {
 }
 
 func (qb *QuicQBroker) handleConnection(ctx context.Context, conn conn.Connection) {
-	stream, err := conn.AcceptStream(ctx)
-	if err != nil {
-		log.Println("ERROR: ", err.Error())
-		return
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break loop
+		default:
+			stream, err := conn.AcceptStream(ctx)
+			if err != nil {
+				log.Println("ERROR: ", err.Error())
+				return
+			}
+			go qb.handleStream(stream)
+		}
 	}
+}
+
+func (qb *QuicQBroker) handleStream(stream conn.Stream) {
 	streamCtx := stream.Context()
 	for {
 		select {
@@ -84,9 +99,9 @@ func (qb *QuicQBroker) handleConnection(ctx context.Context, conn conn.Connectio
 			return
 		default:
 			var p [512]byte
-			_, err = stream.Rcv(p[:])
+			_, err := stream.Rcv(p[:])
 			if err != nil {
-				conn.Log("Failed to read a message: %s\n", err.Error())
+				stream.Log("Failed to read a message: %s\n", err.Error())
 				continue
 			}
 			bs := bytes.Trim(p[:], "\x00")
@@ -95,7 +110,7 @@ func (qb *QuicQBroker) handleConnection(ctx context.Context, conn conn.Connectio
 				stream.Send([]byte("gfy maaan"))
 				continue
 			}
-			resp, _ := qb.executeRequest(ctx, req)
+			resp, _ := qb.executeRequest(streamCtx, req)
 			bs, err = qb.encodeResponse(resp)
 			if err != nil {
 				log.Println("failed to encode response: ", err.Error())
@@ -103,7 +118,7 @@ func (qb *QuicQBroker) handleConnection(ctx context.Context, conn conn.Connectio
 			}
 			// write the message back
 			if _, err = stream.Send(bs); err != nil {
-				conn.Log("Failed to write a message: %s\n", err.Error())
+				stream.Log("Failed to write a message: %s\n", err.Error())
 				continue
 			}
 		}
@@ -122,11 +137,54 @@ func (qb *QuicQBroker) executeRequest(ctx context.Context, req *quicq.Request) (
 		return qb.doFetchTopicMetadata(req.GetFetchTopicMetadataRequest())
 	case quicq.RequestType_REQUEST_POLL:
 		return qb.doPoll(req.GetPollRequest())
+	case quicq.RequestType_REQUEST_POST:
+		return qb.doPost(req.GetPostRequest())
 	}
 }
 
+func (qb *QuicQBroker) doPost(req *quicq.PostRequest) (*quicq.Response, error) {
+	// TODO(threadedstream): define different type of mutex for locking a queue
+	qb.mu.Lock()
+	defer qb.mu.Unlock()
+	top := qb.getOrAddTopic(req.GetTopic())
+	err := top.Push(req.GetRecord())
+	if err != nil {
+		return nil, err
+	}
+	return &quicq.Response{
+		ResponseType: quicq.ResponseType_RESPONSE_POST,
+		Response: &quicq.Response_PostResponse{
+			PostResponse: &quicq.PostResponse{
+				Offset: 10,
+			},
+		},
+	}, nil
+}
+
 func (qb *QuicQBroker) doPoll(req *quicq.PollRequest) (*quicq.Response, error) {
-	return nil, nil
+	var records []*quicq.Record
+	topicNames := qb.subscriptions[req.GetConsumerID()]
+
+	var topics []topic.Topic
+	for _, topicName := range topicNames {
+		if top, ok := qb.topicQueryMap[topicName]; ok {
+			topics = append(topics, top)
+		}
+	}
+
+	for _, t := range topics {
+		recs, _ := t.GetRecordBatch()
+		records = append(records, recs...)
+	}
+
+	return &quicq.Response{
+		ResponseType: quicq.ResponseType_RESPONSE_POLL,
+		Response: &quicq.Response_PollResponse{
+			PollResponse: &quicq.PollResponse{
+				Records: records,
+			},
+		},
+	}, nil
 }
 
 func (qb *QuicQBroker) doFetchTopicMetadata(req *quicq.FetchTopicMetadataRequest) (*quicq.Response, error) {
@@ -145,6 +203,8 @@ func (qb *QuicQBroker) doFetchTopicMetadata(req *quicq.FetchTopicMetadataRequest
 func (qb *QuicQBroker) doSubscribe(req *quicq.SubscribeRequest) (*quicq.Response, error) {
 	qb.mu.Lock()
 	defer qb.mu.Unlock()
+	top := qb.getOrAddTopic(req.GetTopic())
+	_ = top.TieConsumer(req.GetConsumerID())
 	qb.subscriptions[req.GetConsumerID()] = append(qb.subscriptions[req.GetConsumerID()], req.GetTopic())
 	return &quicq.Response{
 		ResponseType: quicq.ResponseType_RESPONSE_SUBSCRIBE,
@@ -154,16 +214,20 @@ func (qb *QuicQBroker) doSubscribe(req *quicq.SubscribeRequest) (*quicq.Response
 func (qb *QuicQBroker) doUnsubscribe(req *quicq.UnsubscribeRequest) (*quicq.Response, error) {
 	qb.mu.Lock()
 	defer qb.mu.Unlock()
-	topics := qb.subscriptions[req.GetConsumerID()]
-	for i := range topics {
-		if topics[i] == req.GetTopic() {
-			topics[i] = topics[len(topics)-1]
-			topics = topics[:len(topics)-1]
-			break
+	for _, t := range qb.topics {
+		if t.Name() == req.GetTopic() {
+			_ = t.EvictConsumer(req.GetConsumerID())
 		}
 	}
 
-	qb.subscriptions[req.GetConsumerID()] = topics
+	topicNames := qb.subscriptions[req.GetConsumerID()]
+	for i := range topicNames {
+		if req.GetTopic() == topicNames[i] {
+			topicNames[i] = topicNames[len(topicNames)-1]
+			topicNames = topicNames[:len(topicNames)-1]
+		}
+	}
+	qb.subscriptions[req.GetConsumerID()] = topicNames
 	return &quicq.Response{
 		ResponseType: quicq.ResponseType_RESPONSE_UNSUBSCRIBE,
 	}, nil
@@ -179,4 +243,16 @@ func (qb *QuicQBroker) decodeRequest(bs []byte) (*quicq.Request, error) {
 
 func (qb *QuicQBroker) encodeResponse(resp *quicq.Response) ([]byte, error) {
 	return proto.Marshal(resp)
+}
+
+func (qb *QuicQBroker) getOrAddTopic(name string) topic.Topic {
+	var top topic.Topic
+	if t, ok := qb.topicQueryMap[name]; ok {
+		top = t
+	} else {
+		top = topic.New(name, queueSizeMax)
+		qb.topicQueryMap[name] = top
+		qb.topics = append(qb.topics, top)
+	}
+	return top
 }

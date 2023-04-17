@@ -25,7 +25,7 @@ func Put(q **LLQ, val any) {
 	cur := new(LLQ)
 	cur.val = val
 	oldCur := *q
-	(*q) = cur
+	*q = cur
 	(*q).prev = oldCur
 	(*q).len += oldCur.len + 1
 }

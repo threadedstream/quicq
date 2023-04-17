@@ -40,13 +40,14 @@ func (qc *QuicQClient) Dial(ctx context.Context, addr string) error {
 }
 
 // RequestStream attempts to open a stream with a peer
-func (qc *QuicQClient) RequestStream() error {
+func (qc *QuicQClient) RequestStream() (conn.Stream, error) {
 	stream, err := qc.OpenStream()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	qc.messageBus = &conn.QuicQStream{Stream: stream}
-	return err
+	s := &conn.QuicQStream{Stream: stream}
+	qc.messageBus = s
+	return s, nil
 }
 
 // Send sends data over a bus

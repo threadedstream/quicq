@@ -96,6 +96,8 @@ Poll()
 
 Subscribe()
 
+subscriber -> Topic
+
 **Bibliography**
 
 Prashant Kharat, Muralidhar Kulkarni, Modified QUIC protocol with congestion control for improved network performance, IET Communications https://ietresearch.onlinelibrary.wiley.com/doi/10.1049/cmu2.12154, Vol.5, Issue 9 1210-1222.

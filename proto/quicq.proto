@@ -4,12 +4,15 @@ package quicq.v1;
 
 option go_package = "github.com/threadedstream/quicq/pkg/proto/quicq/v1;quicq";
 
+import "google/protobuf/timestamp.proto";
+
 enum RequestType {
   REQUEST_UNKNOWN = 0;
   REQUEST_SUBSCRIBE = 1;
   REQUEST_UNSUBSCRIBE = 2;
   REQUEST_FETCH_TOPIC_METADATA = 3;
   REQUEST_POLL = 4;
+  REQUEST_POST = 5;
 }
 
 enum ResponseType {
@@ -18,6 +21,7 @@ enum ResponseType {
   RESPONSE_UNSUBSCRIBE = 2;
   RESPONSE_FETCH_TOPIC_METADATA = 3;
   RESPONSE_POLL = 4;
+  RESPONSE_POST = 5;
 }
 
 message Request {
@@ -27,6 +31,7 @@ message Request {
     UnsubscribeRequest unsubscribeRequest = 3;
     FetchTopicMetadataRequest fetchTopicMetadataRequest = 4;
     PollRequest pollRequest = 5;
+    PostRequest postRequest = 6;
   }
 }
 
@@ -37,6 +42,7 @@ message Response {
     UnsubscribeResponse unsubscribeResponse = 3;
     FetchTopicMetadataResponse fetchTopicMetadataResponse = 4;
     PollResponse pollResponse = 5;
+    PostResponse postResponse = 6;
   }
 }
 
@@ -69,13 +75,25 @@ message FetchTopicMetadataResponse {
 
 message PollRequest {
   int64 consumerID = 1;
+  int64 offset = 2;
 }
 
 message PollResponse {
   repeated Record records = 1;
 }
 
+message PostRequest{
+  string topic = 1;
+  Record record = 2;
+}
+
+message PostResponse {
+  int64 offset = 2;
+}
+
 message Record {
-  bytes key = 1;
-  bytes payload = 2;
+  int64 offset = 1;
+  bytes key = 2;
+  bytes payload = 3;
+  google.protobuf.Timestamp timestamp = 4;
 }

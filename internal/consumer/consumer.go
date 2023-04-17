@@ -43,9 +43,6 @@ func (qc *QuicQConsumer) connect(ctx context.Context) error {
 	if err := qc.client.Dial(ctx, brokerAddr); err != nil {
 		return err
 	}
-	if err := qc.client.RequestStream(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -108,12 +105,18 @@ func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
 		return nil, err
 	}
 
-	if err = qc.client.Send(bs); err != nil {
+	stream, err := qc.client.RequestStream()
+	if err != nil {
+		return nil, err
+	}
+	defer stream.Close()
+
+	if _, err = stream.Send(bs); err != nil {
 		return nil, err
 	}
 
 	var responseBytes [1024]byte
-	if err = qc.client.Rcv(responseBytes[:]); err != nil {
+	if _, err = stream.Rcv(responseBytes[:]); err != nil {
 		return nil, err
 	}
 

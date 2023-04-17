@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
@@ -17,7 +18,8 @@ import (
 // Stream is a general stream interface used throughout the app
 type Stream interface {
 	Send([]byte) (int, error)
-	Rcv(p []byte) (int, error)
+	Rcv([]byte) (int, error)
+	Log(string, ...any)
 	Context() context.Context
 	Close() error
 }
@@ -38,8 +40,8 @@ type QuicQConn struct {
 }
 
 func (qc *QuicQConn) Log(format string, args ...any) {
-	fmt := "[" + qc.RemoteAddr().String() + "] => " + format
-	log.Printf(fmt, args...)
+	format = "[" + qc.RemoteAddr().String() + "] => " + format
+	log.Printf(format, args...)
 }
 
 // ReceiveDatagram receives datagram from a peer
@@ -100,6 +102,11 @@ func (qs *QuicQStream) Context() context.Context {
 // Close closes underlying stream
 func (qs *QuicQStream) Close() error {
 	return qs.Stream.Close()
+}
+
+func (qs *QuicQStream) Log(format string, args ...any) {
+	format = "[StreamID " + fmt.Sprint(qs.Stream.StreamID()) + "] => " + format
+	log.Printf(format, args...)
 }
 
 // QuicQTLSFunc generates a default in-memory tls config with no io access to external certificates

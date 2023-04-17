@@ -3,6 +3,7 @@ module github.com/threadedstream/quicthing
 go 1.20
 
 require (
+	github.com/golang/protobuf v1.5.2
 	github.com/quic-go/quic-go v0.33.0
 	github.com/stretchr/testify v1.5.1
 	google.golang.org/protobuf v1.30.0
