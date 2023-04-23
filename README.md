@@ -30,8 +30,6 @@ message broker over quic
 
     ** QUIC is still bound by the laws of physics and the need to be nice to other senders on the Internet. This means that it will not magically download your website resources much more quickly than TCP. However, QUIC’s flexibility means that experimenting with new congestion-control algorithms will become easier, which should improve things in the future for both TCP and QUIC.**
     
-    **QUIC is still bound by the laws of physics and the need to be nice to other senders on the Internet. This means that it will not magically download your website resources much more quickly than TCP. However, QUIC’s flexibility means that experimenting with new congestion-control algorithms will become easier, which should improve things in the future for both TCP and QUIC.**
-
     **Congestion control**
     Another problem is that we don’t know up front how much the maximum bandwidth will be. It often depends on a bottleneck somewhere in the end-to-end connection, but we cannot predict or know where this will be. The Internet also doesn’t have mechanisms (yet) to signal link capacities back to the endpoints.
 
@@ -40,8 +38,6 @@ message broker over quic
     As such, a connection doesn’t know how much bandwidth it can safely or fairly use up front, and this bandwidth can change as users join, leave, and use the network. To solve this problem, TCP will constantly try to discover the available bandwidth over time by using a mechanism called congestion control.
 
     At the start of the connection, it sends just a few packets (in practice, ranging between 10 and 100 packets, or about 14 and 140 KB of data) and waits one round trip until the receiver sends back acknowledgements of these packets. If they are all acknowledged, this means the network can handle that send rate, and we can try to repeat the process but with more data (in practice, the send rate usually doubles with every iteration).
-
-    **TODO(me)**: Написать про замену tcp под названием quic. Перечислить главные недостатки tcp и указать на достоинства quic 
 
     **Very important**
     They observed QUIC outperforms TCP/TLS with HTTP/2 for wireless and mobile networks, whereas for wired and stable networks, a significant performance improvement is not seen [29].
@@ -75,6 +71,12 @@ message broker over quic
 
 head of line blocking 
 rabbitmq has an idea of channels which resembles http2/streams 
+
+### TODOs
+
+Try, for the sake of experiment, sending huge number of data through tcp and QUIC pipes. Evaluate performance 
+
+Find comparison graphs of quic cubic and tcp cubic
 
 spdy - read about that as well
 
