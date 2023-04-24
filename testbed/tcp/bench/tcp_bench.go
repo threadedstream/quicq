@@ -1,21 +1,25 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"log"
+	"math/big"
 	"net"
 	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
-// #include <stdlib.h>
-import "C"
+var tlsConf *tls.Config
 
-func testConnect() {
+func dialNoTLS() {
 	dialer := net.Dialer{
 		Control: reusePort,
-		LocalAddr: &net.TCPAddr{
-			Port: 45000,
-		},
 	}
 	conn, err := dialer.Dial("tcp4", ":3000")
 	if err != nil {
@@ -27,33 +31,80 @@ func testConnect() {
 	}
 }
 
-func main() {
-	// 100 connections
+func dialTLS() {
+	dialer := tls.Dialer{
+		NetDialer: &net.Dialer{
+			Control: reusePort,
+		},
+		Config: tlsConf,
+	}
+	conn, err := dialer.Dial("tcp4", ":3000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = conn.Close(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func testConnect() {
+	dialTLS()
+}
+
+const (
+	step1 int64 = 1e2
+	step2 int64 = 1e3
+	step3 int64 = 1e4
+	step4 int64 = 1e5
+)
+
+func measure(num int64) {
 	start := time.Now()
-	for i := 0; i < 1e2; i++ {
+	for i := int64(0); i < num; i++ {
 		testConnect()
 	}
 	end := time.Now().Sub(start).Seconds()
-	log.Printf("10 conn: %f\n", end)
+	log.Printf("%d conn: %f\n", num, end)
+}
 
-	// 1000 connections
-	start = time.Now()
-	for i := 0; i < 1e3; i++ {
-		testConnect()
+func main() {
+	var err error
+	tlsConf, err = getTLS()
+	if err != nil {
+		log.Fatal(err)
 	}
-	end = time.Now().Sub(start).Seconds()
-	log.Printf("100 conn: %f\n", end)
+	measure(step1)
+	measure(step2)
+	measure(step3)
+	measure(step4)
+}
 
-	// 10000 connections
-	for i := 0; i < 1e4; i++ {
-		testConnect()
+func getTLS() (*tls.Config, error) {
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return nil, err
 	}
-	end = time.Now().Sub(start).Seconds()
-	log.Printf("1000 conn: %f\n", end)
+	template := x509.Certificate{SerialNumber: big.NewInt(1)}
+	certDer, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		return nil, err
+	}
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDer})
+
+	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tls.Config{
+		Certificates:       []tls.Certificate{tlsCert},
+		InsecureSkipVerify: true,
+	}, nil
 }
 
 func reusePort(network, address string, conn syscall.RawConn) error {
 	return conn.Control(func(descriptor uintptr) {
-		syscall.SetsockoptInt(int(descriptor), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
+		syscall.SetsockoptInt(int(descriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
 	})
 }
