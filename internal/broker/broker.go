@@ -1,23 +1,27 @@
 package broker
 
 import (
-	"bytes"
 	"context"
 	"errors"
+	"github.com/threadedstream/quicthing/internal/encoder"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/threadedstream/quicthing/internal/topic"
 
 	"github.com/threadedstream/quicthing/internal/conn"
 	"github.com/threadedstream/quicthing/internal/server"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
 	defaultBrokerAddr = "0.0.0.0:9999"
 	queueSizeMax      = 256
+)
+
+const (
+	ctxPollTimeout = 100 * time.Millisecond
 )
 
 var (
@@ -34,6 +38,8 @@ type QuicQBroker struct {
 	subscriptions       map[int64][]string
 	topics              []topic.Topic
 	topicQueryMap       map[string]topic.Topic
+	encoder             encoder.Encoder
+	decoder             encoder.Decoder
 	currentRecordOffset int64
 }
 
@@ -44,6 +50,8 @@ func New() *QuicQBroker {
 		topics:        make([]topic.Topic, 0),
 		subscriptions: make(map[int64][]string),
 		topicQueryMap: make(map[string]topic.Topic),
+		encoder:       encoder.NewProtoEncoder(),
+		decoder:       encoder.NewProtoDecoder(),
 	}
 	return broker
 }
@@ -61,7 +69,7 @@ func (qb *QuicQBroker) run(ctx context.Context) error {
 		case <-ctx.Done():
 			qb.server.Shutdown()
 			return brokerClosedErr
-		default:
+		case <-time.After(ctxPollTimeout):
 			c, err := qb.server.AcceptClient(ctx)
 			if err != nil {
 				// it's highly discouraged, but we're good w/ that for the purpose of learning
@@ -80,7 +88,7 @@ loop:
 		select {
 		case <-ctx.Done():
 			break loop
-		default:
+		case <-time.After(ctxPollTimeout):
 			stream, err := conn.AcceptStream(ctx)
 			if err != nil {
 				log.Println("ERROR: ", err.Error())
@@ -93,34 +101,38 @@ loop:
 
 func (qb *QuicQBroker) handleStream(stream conn.Stream) {
 	streamCtx := stream.Context()
+outer:
 	for {
 		select {
-		case <-streamCtx.Done():
-			stream.Close()
-			return
-		default:
-			var p [512]byte
+		case _, ok := <-streamCtx.Done():
+			if !ok {
+				println("closing stream...")
+				return
+			}
+		case <-time.After(ctxPollTimeout):
+			var p [1024]byte
 			_, err := stream.Rcv(p[:])
 			if err != nil {
 				stream.Log("Failed to read a message: %s\n", err.Error())
-				continue
+				continue outer
 			}
-			bs := bytes.Trim(p[:], "\x00")
-			req, err := qb.decodeRequest(bs)
+			req, err := qb.decoder.DecodeRequest(p[:])
+
 			if err != nil {
 				stream.Send([]byte("gfy maaan"))
-				continue
+				continue outer
 			}
+
 			resp, _ := qb.executeRequest(streamCtx, req)
-			bs, err = qb.encodeResponse(resp)
+			bs, err := qb.encoder.EncodeResponse(resp)
 			if err != nil {
 				log.Println("failed to encode response: ", err.Error())
-				break
+				continue outer
 			}
 			// write the message back
 			if _, err = stream.Send(bs); err != nil {
 				stream.Log("Failed to write a message: %s\n", err.Error())
-				continue
+				continue outer
 			}
 		}
 	}
@@ -209,6 +221,11 @@ func (qb *QuicQBroker) doSubscribe(req *quicq.SubscribeRequest) (*quicq.Response
 	qb.subscriptions[req.GetConsumerID()] = append(qb.subscriptions[req.GetConsumerID()], req.GetTopic())
 	return &quicq.Response{
 		ResponseType: quicq.ResponseType_RESPONSE_SUBSCRIBE,
+		Response: &quicq.Response_SubscribeResponse{
+			SubscribeResponse: &quicq.SubscribeResponse{
+				Topic: req.GetTopic(),
+			},
+		},
 	}, nil
 }
 
@@ -232,25 +249,6 @@ func (qb *QuicQBroker) doUnsubscribe(req *quicq.UnsubscribeRequest) (*quicq.Resp
 	return &quicq.Response{
 		ResponseType: quicq.ResponseType_RESPONSE_UNSUBSCRIBE,
 	}, nil
-}
-
-func (qb *QuicQBroker) decodeRequest(bs []byte) (*quicq.Request, error) {
-	req := new(quicq.Request)
-	// remove trailing \xee
-	bs = bs[:len(bs)-1]
-	if err := proto.Unmarshal(bs, req); err != nil {
-		return nil, err
-	}
-	return req, nil
-}
-
-func (qb *QuicQBroker) encodeResponse(resp *quicq.Response) ([]byte, error) {
-	bs, err := proto.Marshal(resp)
-	if err != nil {
-		return nil, err
-	}
-	bs = append(bs, '\xee')
-	return bs, nil
 }
 
 func (qb *QuicQBroker) getOrAddTopic(name string) topic.Topic {

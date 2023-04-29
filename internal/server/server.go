@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"time"
 
 	"github.com/quic-go/quic-go"
 	"github.com/threadedstream/quicthing/internal/conn"
@@ -17,7 +18,7 @@ type Server interface {
 	Close() error
 }
 
-// QuicQServer is a quic server
+// QuicServer is a quic server
 type QuicServer struct {
 	quic.Connection
 	listener            quic.Listener
@@ -31,8 +32,10 @@ func (qs *QuicServer) Serve(addr string) error {
 		return err
 	}
 
+	// try 0RTT thing
 	conf := &quic.Config{
 		EnableDatagrams: true,
+		MaxIdleTimeout:  time.Second * 10,
 	}
 	listener, err := quic.ListenAddr(addr, tlsConf, conf)
 	if err != nil {

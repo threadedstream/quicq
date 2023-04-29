@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"time"
 
 	"github.com/threadedstream/quicthing/internal/publisher"
 )
@@ -18,8 +19,11 @@ func main() {
 		log.Fatalf("failed to connect to server: %s", err.Error())
 	}
 
-	_, err := p.Post("news-feed", []byte("mykey"), []byte("my payload"))
-	if err != nil {
-		log.Printf("error: %s", err.Error())
+	for {
+		_, err := p.Post("feed-topic", []byte("mykey"), []byte("my payload"))
+		if err != nil {
+			log.Printf("error: %s", err.Error())
+		}
+		time.Sleep(2 * time.Second)
 	}
 }

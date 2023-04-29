@@ -21,7 +21,7 @@ type Stream interface {
 	Rcv([]byte) (int, error)
 	Log(string, ...any)
 	Context() context.Context
-	Close() error
+	Shutdown() error
 }
 
 // Connection is an interface to quic connection
@@ -99,8 +99,10 @@ func (qs *QuicQStream) Context() context.Context {
 	return qs.Stream.Context()
 }
 
-// Close closes underlying stream
-func (qs *QuicQStream) Close() error {
+// Shutdown completely disposes of stream canceling context as well
+func (qs *QuicQStream) Shutdown() error {
+	qs.Stream.CancelRead(quic.StreamErrorCode(quic.NoError))
+	qs.Stream.CancelWrite(quic.StreamErrorCode(quic.NoError))
 	return qs.Stream.Close()
 }
 

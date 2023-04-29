@@ -1,11 +1,10 @@
 package publisher
 
 import (
-	"bytes"
 	"context"
+	"github.com/threadedstream/quicthing/internal/encoder"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/threadedstream/quicthing/internal/client"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -17,12 +16,17 @@ type Publisher interface {
 
 // QuicQProducer is a Consumer implementation
 type QuicQProducer struct {
-	client *client.QuicQClient
+	client  *client.QuicQClient
+	encoder encoder.Encoder
+	decoder encoder.Decoder
 }
 
 // New initializes a QuicQProducer object
 func New() *QuicQProducer {
-	return &QuicQProducer{}
+	return &QuicQProducer{
+		encoder: encoder.NewProtoEncoder(),
+		decoder: encoder.NewProtoDecoder(),
+	}
 }
 
 // Connect connects to broker
@@ -57,17 +61,20 @@ func (qp *QuicQProducer) Post(topic string, key, payload []byte) (*quicq.Respons
 }
 
 func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
-	bs, err := proto.Marshal(req)
+	bs, err := qp.encoder.EncodeRequest(req)
 	if err != nil {
 		return nil, err
 	}
-
-	bs = append(bs, '\xee')
 
 	stream, err := qp.client.RequestStream()
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		_ = stream.Shutdown()
+	}()
+
 	if _, err = stream.Send(bs); err != nil {
 		return nil, err
 	}
@@ -77,9 +84,8 @@ func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 		return nil, err
 	}
 
-	rb := bytes.Trim(responseBytes[:], "\x00")
-	resp := new(quicq.Response)
-	if err = proto.Unmarshal(rb, resp); err != nil {
+	resp, err := qp.decoder.DecodeResponse(responseBytes[:])
+	if err != nil {
 		return nil, err
 	}
 	return resp, nil

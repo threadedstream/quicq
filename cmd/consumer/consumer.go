@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
-	"time"
-
 	"github.com/threadedstream/quicthing/internal/consumer"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
+	"log"
+	"sync"
+	"time"
 )
 
 var (
@@ -31,19 +31,35 @@ func main() {
 	}
 	log.Printf("Got response with response type %s", quicq.ResponseType_name[int32(resp.GetResponseType())])
 
+	wg := &sync.WaitGroup{}
+	ticker := time.NewTicker(time.Minute * 1)
+
+outer:
 	for {
-		time.Sleep(2 * time.Second)
-		resp, err = c.Poll()
-		if err != nil {
-			log.Printf("error: %s", err.Error())
-			continue
+		select {
+		case <-ticker.C:
+			break outer
+		case <-time.After(time.Millisecond * 100):
+			resp, err = c.Poll()
+			if err != nil {
+				log.Printf("error: %s", err.Error())
+				continue outer
+			}
+			if resp.GetPollResponse().GetRecords() != nil {
+				wg.Add(1)
+				// process messages only in case they're present
+				go handleRecords(wg, resp.GetPollResponse().GetRecords())
+			}
+			continue outer
 		}
-		go handleRecords(resp.GetPollResponse().GetRecords())
 	}
+
+	wg.Wait()
 }
 
-func handleRecords(records []*quicq.Record) {
+func handleRecords(wg *sync.WaitGroup, records []*quicq.Record) {
+	defer wg.Done()
 	for _, rec := range records {
-		log.Printf("> [%s] => %s", rec.GetKey(), rec.GetPayload())
+		log.Printf("[%s] => %s", rec.GetKey(), rec.GetPayload())
 	}
 }

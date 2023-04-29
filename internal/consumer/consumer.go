@@ -1,13 +1,12 @@
 package consumer
 
 import (
-	"bytes"
 	"context"
+	"github.com/threadedstream/quicthing/internal/encoder"
 	"math/rand"
 
 	"github.com/threadedstream/quicthing/internal/client"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 // Consumer is a consumer interface
@@ -21,14 +20,18 @@ type Consumer interface {
 
 // QuicQConsumer is a Consumer implementation
 type QuicQConsumer struct {
-	id     int64
-	client *client.QuicQClient
+	id      int64
+	client  *client.QuicQClient
+	encoder encoder.Encoder
+	decoder encoder.Decoder
 }
 
 // New initializes a QuicQConsumer object
 func New() *QuicQConsumer {
 	return &QuicQConsumer{
-		id: rand.Int63(),
+		id:      rand.Int63(),
+		encoder: encoder.NewProtoEncoder(),
+		decoder: encoder.NewProtoDecoder(),
 	}
 }
 
@@ -100,7 +103,7 @@ func (qc *QuicQConsumer) Poll() (*quicq.Response, error) {
 }
 
 func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
-	bs, err := proto.Marshal(req)
+	bs, err := qc.encoder.EncodeRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +112,10 @@ func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer stream.Close()
+
+	defer func() {
+		_ = stream.Shutdown()
+	}()
 
 	if _, err = stream.Send(bs); err != nil {
 		return nil, err
@@ -120,9 +126,8 @@ func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
 		return nil, err
 	}
 
-	rb := bytes.Trim(responseBytes[:], "\x00")
-	resp := new(quicq.Response)
-	if err = proto.Unmarshal(rb, resp); err != nil {
+	resp, err := qc.decoder.DecodeResponse(responseBytes[:])
+	if err != nil {
 		return nil, err
 	}
 	return resp, nil
