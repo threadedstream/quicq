@@ -3,13 +3,9 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/threadedstream/quicthing/internal/publisher"
 	"log"
-)
 
-var (
-	host = flag.String("host", "localhost", "host to dial into")
-	port = flag.String("port", "3000", "server port")
+	"github.com/threadedstream/quicthing/internal/publisher"
 )
 
 func main() {
@@ -19,7 +15,7 @@ func main() {
 	ctx := context.Background()
 	p := publisher.New()
 	if err := p.Connect(ctx); err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to connect to server: %s", err.Error())
 	}
 
 	_, err := p.Post("news-feed", []byte("mykey"), []byte("my payload"))

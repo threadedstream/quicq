@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/threadedstream/quicthing/internal/topic"
 	"log"
 	"sync"
+
+	"github.com/threadedstream/quicthing/internal/topic"
 
 	"github.com/threadedstream/quicthing/internal/conn"
 	"github.com/threadedstream/quicthing/internal/server"
@@ -61,14 +62,14 @@ func (qb *QuicQBroker) run(ctx context.Context) error {
 			qb.server.Shutdown()
 			return brokerClosedErr
 		default:
-			conn, err := qb.server.AcceptClient(ctx)
+			c, err := qb.server.AcceptClient(ctx)
 			if err != nil {
 				// it's highly discouraged, but we're good w/ that for the purpose of learning
 				log.Println("failed to accept: " + err.Error())
 				continue
 			}
-			log.Printf("got a new connection: %s\n", conn.RemoteAddr().String())
-			go qb.handleConnection(ctx, conn)
+			log.Printf("got a new connection: %s\n", c.RemoteAddr().String())
+			go qb.handleConnection(ctx, c)
 		}
 	}
 }
@@ -235,6 +236,8 @@ func (qb *QuicQBroker) doUnsubscribe(req *quicq.UnsubscribeRequest) (*quicq.Resp
 
 func (qb *QuicQBroker) decodeRequest(bs []byte) (*quicq.Request, error) {
 	req := new(quicq.Request)
+	// remove trailing \xee
+	bs = bs[:len(bs)-1]
 	if err := proto.Unmarshal(bs, req); err != nil {
 		return nil, err
 	}
@@ -242,7 +245,12 @@ func (qb *QuicQBroker) decodeRequest(bs []byte) (*quicq.Request, error) {
 }
 
 func (qb *QuicQBroker) encodeResponse(resp *quicq.Response) ([]byte, error) {
-	return proto.Marshal(resp)
+	bs, err := proto.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	bs = append(bs, '\xee')
+	return bs, nil
 }
 
 func (qb *QuicQBroker) getOrAddTopic(name string) topic.Topic {

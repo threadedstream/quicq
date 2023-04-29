@@ -80,6 +80,9 @@ Find comparison graphs of quic cubic and tcp cubic
 
 spdy - read about that as well
 
+write down your pc specs you ran tests on
+
+
 rabbitmq 
 uses channels
 uses tcp streams

@@ -3,11 +3,12 @@ package publisher
 import (
 	"bytes"
 	"context"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/threadedstream/quicthing/internal/client"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"time"
 )
 
 type Publisher interface {
@@ -30,7 +31,7 @@ func (qp *QuicQProducer) Connect(ctx context.Context) error {
 }
 
 func (qp *QuicQProducer) connect(ctx context.Context) error {
-	const brokerAddr = "0.0.0.0:9999"
+	const brokerAddr = "127.0.0.1:9999"
 	qp.client = client.New()
 	if err := qp.client.Dial(ctx, brokerAddr); err != nil {
 		return err
@@ -61,6 +62,8 @@ func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 		return nil, err
 	}
 
+	bs = append(bs, '\xee')
+
 	stream, err := qp.client.RequestStream()
 	if err != nil {
 		return nil, err
@@ -75,7 +78,6 @@ func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 	}
 
 	rb := bytes.Trim(responseBytes[:], "\x00")
-	rb = append(rb, '\x00')
 	resp := new(quicq.Response)
 	if err = proto.Unmarshal(rb, resp); err != nil {
 		return nil, err
