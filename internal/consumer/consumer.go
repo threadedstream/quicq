@@ -2,11 +2,11 @@ package consumer
 
 import (
 	"context"
-	"github.com/threadedstream/quicthing/internal/encoder"
-	"math/rand"
-
 	"github.com/threadedstream/quicthing/internal/client"
+	"github.com/threadedstream/quicthing/internal/common"
+	"github.com/threadedstream/quicthing/internal/encoder"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
+	"time"
 )
 
 // Consumer is a consumer interface
@@ -29,7 +29,7 @@ type QuicQConsumer struct {
 // New initializes a QuicQConsumer object
 func New() *QuicQConsumer {
 	return &QuicQConsumer{
-		id:      rand.Int63(),
+		id:      int64(common.IDManager.GetNextID()),
 		encoder: encoder.NewProtoEncoder(),
 		decoder: encoder.NewProtoDecoder(),
 	}
@@ -41,7 +41,7 @@ func (qc *QuicQConsumer) Connect(ctx context.Context) error {
 }
 
 func (qc *QuicQConsumer) connect(ctx context.Context) error {
-	const brokerAddr = "0.0.0.0:9999"
+	const brokerAddr = "127.0.0.1:9999"
 	qc.client = client.New()
 	if err := qc.client.Dial(ctx, brokerAddr); err != nil {
 		return err
@@ -100,6 +100,35 @@ func (qc *QuicQConsumer) Poll() (*quicq.Response, error) {
 	}
 
 	return qc.do(req)
+}
+
+// Notify is not really a request, but an attempt to set up push model
+func (qc *QuicQConsumer) Notify(ctx context.Context) (chan *quicq.Response, chan error) {
+	dataChan := make(chan *quicq.Response, common.QueueSizeMax/2)
+	errChan := make(chan error, common.QueueSizeMax/2)
+
+	go func() {
+	outer:
+		for {
+			select {
+			case <-ctx.Done():
+				close(dataChan)
+				close(errChan)
+				// context canceled
+				return
+			case <-time.After(time.Millisecond * 100):
+				resp, err := qc.Poll()
+				if err != nil {
+					errChan <- err
+					continue outer
+				}
+				dataChan <- resp
+				continue outer
+			}
+		}
+	}()
+
+	return dataChan, errChan
 }
 
 func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {

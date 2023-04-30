@@ -10,11 +10,6 @@ import (
 	"time"
 )
 
-var (
-	host = flag.String("host", "localhost", "host to dial into")
-	port = flag.String("port", "3000", "server port")
-)
-
 func main() {
 	// parse flags
 	flag.Parse()
@@ -34,22 +29,24 @@ func main() {
 	wg := &sync.WaitGroup{}
 	ticker := time.NewTicker(time.Minute * 1)
 
+	cancelCtx, cancel := context.WithCancel(ctx)
+	dataChan, errChan := c.Notify(cancelCtx)
+
 outer:
 	for {
 		select {
 		case <-ticker.C:
+			cancel()
 			break outer
-		case <-time.After(time.Millisecond * 100):
-			resp, err = c.Poll()
-			if err != nil {
-				log.Printf("error: %s", err.Error())
-				continue outer
-			}
-			if resp.GetPollResponse().GetRecords() != nil {
+		case r := <-dataChan:
+			if recs := r.GetPollResponse().GetRecords(); len(recs) > 0 {
 				wg.Add(1)
 				// process messages only in case they're present
-				go handleRecords(wg, resp.GetPollResponse().GetRecords())
+				go handleRecords(wg, recs)
 			}
+			continue outer
+		case e := <-errChan:
+			log.Printf("error while polling: %s\n", e.Error())
 			continue outer
 		}
 	}

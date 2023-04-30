@@ -6,6 +6,10 @@ import (
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 )
 
+const (
+	terminatingByte = '\xee'
+)
+
 type Encoder interface {
 	EncodeRequest(*quicq.Request) ([]byte, error)
 	EncodeResponse(*quicq.Response) ([]byte, error)
@@ -36,7 +40,7 @@ func (pe *ProtoEncoder) encode(obj proto.Message) ([]byte, error) {
 		return nil, err
 	}
 	// note: the idea borrowed from rabbitmq protocol implementation
-	bs = append(bs, '\xee')
+	bs = append(bs, terminatingByte)
 	return bs, nil
 }
 

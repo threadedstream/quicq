@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"log"
 	"math/big"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,7 +22,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("err: %s", err.Error())
 	}
-	server, err := quic.ListenAddr(":5000", tlsConf, &quic.Config{})
+	server, err := quic.ListenAddr(":5000", tlsConf, &quic.Config{
+		Allow0RTT: func(net.Addr) bool { return true },
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,5 +75,6 @@ func getTLS() (*tls.Config, error) {
 	return &tls.Config{
 		Certificates:       []tls.Certificate{tlsCert},
 		InsecureSkipVerify: true,
+		NextProtos:         []string{"quicq"},
 	}, nil
 }

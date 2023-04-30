@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"errors"
+	"github.com/threadedstream/quicthing/internal/config"
 	"github.com/threadedstream/quicthing/internal/encoder"
 	"log"
 	"sync"
@@ -13,11 +14,6 @@ import (
 	"github.com/threadedstream/quicthing/internal/conn"
 	"github.com/threadedstream/quicthing/internal/server"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
-)
-
-const (
-	defaultBrokerAddr = "0.0.0.0:9999"
-	queueSizeMax      = 256
 )
 
 const (
@@ -33,14 +29,13 @@ type Broker interface {
 }
 
 type QuicQBroker struct {
-	server              *server.QuicServer
-	mu                  *sync.Mutex
-	subscriptions       map[int64][]string
-	topics              []topic.Topic
-	topicQueryMap       map[string]topic.Topic
-	encoder             encoder.Encoder
-	decoder             encoder.Decoder
-	currentRecordOffset int64
+	server        *server.QuicServer
+	mu            *sync.Mutex
+	subscriptions map[int64][]string
+	topics        []topic.Topic
+	topicQueryMap map[string]topic.Topic
+	encoder       encoder.Encoder
+	decoder       encoder.Decoder
 }
 
 func New() *QuicQBroker {
@@ -61,9 +56,10 @@ func (qb *QuicQBroker) Run(ctx context.Context) error {
 }
 
 func (qb *QuicQBroker) run(ctx context.Context) error {
-	if e := qb.server.Serve(defaultBrokerAddr); e != nil {
+	if e := qb.server.Serve(config.BrokerConfig.BrokerAddr()); e != nil {
 		log.Fatalf("unable to serve: %s", e.Error())
 	}
+loop:
 	for {
 		select {
 		case <-ctx.Done():
@@ -74,7 +70,7 @@ func (qb *QuicQBroker) run(ctx context.Context) error {
 			if err != nil {
 				// it's highly discouraged, but we're good w/ that for the purpose of learning
 				log.Println("failed to accept: " + err.Error())
-				continue
+				continue loop
 			}
 			log.Printf("got a new connection: %s\n", c.RemoteAddr().String())
 			go qb.handleConnection(ctx, c)
@@ -256,7 +252,7 @@ func (qb *QuicQBroker) getOrAddTopic(name string) topic.Topic {
 	if t, ok := qb.topicQueryMap[name]; ok {
 		top = t
 	} else {
-		top = topic.New(name, queueSizeMax)
+		top = topic.New(name, int64(config.BrokerConfig.QueueLen()))
 		qb.topicQueryMap[name] = top
 		qb.topics = append(qb.topics, top)
 	}

@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/threadedstream/quicthing/internal/broker"
+	_ "github.com/threadedstream/quicthing/internal/config"
 )
 
 func main() {

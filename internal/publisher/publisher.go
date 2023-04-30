@@ -2,8 +2,9 @@ package publisher
 
 import (
 	"context"
-	"github.com/threadedstream/quicthing/internal/encoder"
 	"time"
+
+	"github.com/threadedstream/quicthing/internal/encoder"
 
 	"github.com/threadedstream/quicthing/internal/client"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"

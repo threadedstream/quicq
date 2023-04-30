@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
-	"time"
-
 	"github.com/threadedstream/quicthing/internal/publisher"
+	"log"
 )
 
 func main() {
@@ -24,6 +22,5 @@ func main() {
 		if err != nil {
 			log.Printf("error: %s", err.Error())
 		}
-		time.Sleep(2 * time.Second)
 	}
 }
