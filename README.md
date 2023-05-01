@@ -119,3 +119,11 @@ Computer Networks, 150:28–45, 2019, https://arxiv.org/pdf/1810.07730.pdf
 AMQP по-русски, 2009, https://habr.com/ru/articles/62502/ 
 
 Philippe Dobbelaere, Kyumars Sheykh Esmaili, Kafka versus RabbitMQ, 2017, arxiv.org, https://arxiv.org/pdf/1709.00333.pdf
+
+https://docs.confluent.io/kafka/design/delivery-semantics.html
+
+https://dev.to/behalf/event-ordering-with-apache-kafka-2gb5
+
+https://www.rabbitmq.com/reliability.html
+
+https://www.rabbitmq.com/semantics.html
