@@ -117,3 +117,5 @@ Computer Networks, 150:28–45, 2019, https://arxiv.org/pdf/1810.07730.pdf
 Репозиторий с кодом rabbitmq сервера, https://github.com/rabbitmq/rabbitmq-server
 
 AMQP по-русски, 2009, https://habr.com/ru/articles/62502/ 
+
+Philippe Dobbelaere, Kyumars Sheykh Esmaili, Kafka versus RabbitMQ, 2017, arxiv.org, https://arxiv.org/pdf/1709.00333.pdf
