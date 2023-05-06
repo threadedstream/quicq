@@ -6,6 +6,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/quic-go/quic-go v0.33.0
 	github.com/stretchr/testify v1.5.1
+	golang.org/x/sys v0.3.0
 	google.golang.org/protobuf v1.30.0
 )
 
@@ -23,7 +24,6 @@ require (
 	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/net v0.4.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

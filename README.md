@@ -74,25 +74,13 @@ rabbitmq has an idea of channels which resembles http2/streams
 
 ### TODOs
 
-Try, for the sake of experiment, sending huge number of data through tcp and QUIC pipes. Evaluate performance 
+[x] Try, for the sake of experiment, sending huge number of data through tcp and QUIC pipes. Evaluate performance   
+[x] Find comparison graphs of quic cubic and tcp cubic \
+[x] spdy - read about that as well
 
-Find comparison graphs of quic cubic and tcp cubic
-
-spdy - read about that as well
+add more brokers to the scene and implement leader election mechanism?
 
 write down your pc specs you ran tests on
-
-
-rabbitmq 
-uses channels
-uses tcp streams
-idea of publishers and consumers
-multiplexing  
-
-maybe turn to pub/sub?
-implement a custom pub/sub protocol over quic 
-
-requests/response
 
 Subscribe()
 Unsubscribe()

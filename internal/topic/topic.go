@@ -2,6 +2,9 @@ package topic
 
 import (
 	"errors"
+
+	"github.com/threadedstream/quicthing/internal/queue"
+	"github.com/threadedstream/quicthing/internal/queue/chan_queue"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 )
 
@@ -11,8 +14,6 @@ const (
 
 var (
 	duplicateConsumerErr = errors.New("duplicate consumer")
-	queueEmptyErr        = errors.New("queue's empty")
-	queueFullErr         = errors.New("queue's full")
 )
 
 type Topic interface {
@@ -27,17 +28,19 @@ type Topic interface {
 // QuicQTopic is an implementation of a Topic interface
 type QuicQTopic struct {
 	name      string
-	q         chan *quicq.Record
+	q         queue.Queue
 	head      int
 	consumers []int64
 }
 
 // New returns fresh instance of QuicQTopic object
 func New(name string, cap int64) *QuicQTopic {
-	return &QuicQTopic{
+	t := &QuicQTopic{
 		name: name,
-		q:    make(chan *quicq.Record, cap),
+		q:    new(chan_queue.ChanQueue),
 	}
+	t.q.SetCap(int(cap))
+	return t
 }
 
 // Name returns name of a topic
@@ -70,11 +73,7 @@ func (qt *QuicQTopic) GetConsumers() []int64 {
 
 // Push pushes record onto a queue
 func (qt *QuicQTopic) Push(record *quicq.Record) error {
-	if len(qt.q) == queueSizeMax {
-		return queueFullErr
-	}
-	qt.q <- record
-	return nil
+	return qt.q.Push(record)
 }
 
 // EvictConsumer evicts consumer from a list of subscribed consumers
@@ -91,14 +90,8 @@ func (qt *QuicQTopic) EvictConsumer(consumerID int64) error {
 
 func (qt *QuicQTopic) GetRecordBatch() ([]*quicq.Record, error) {
 	var recs []*quicq.Record
-	if len(qt.q) == 0 {
-		return nil, queueEmptyErr
-	}
-	for r := range qt.q {
-		recs = append(recs, r)
-		if len(qt.q) == 0 {
-			break
-		}
+	for r, err := qt.q.Get(); err == nil; {
+		recs = append(recs, r.(*quicq.Record))
 	}
 	return recs, nil
 }

@@ -1,58 +1,27 @@
 package queue
 
+import (
+	"errors"
+)
+
 type Queue interface {
-	Put(val any)
-	Get() any
+	Push(val any) error
+	Get() (any, error)
 	Purge()
-	Remove()
+	Remove() error
 	Len() int
+	Cap() int
+	SetCap(cap int)
 }
 
-type LLQ struct {
-	val  any
-	len  int
-	prev *LLQ
-}
+var (
+	// QFullErr is returned when there's no free space to push additional items onto queue
+	QFullErr = errors.New("queue's full")
+	// QEmptyErr is returned when there's no items to return from queue
+	QEmptyErr = errors.New("queue's empty")
+)
 
-func New(val any) *LLQ {
-	q := new(LLQ)
-	q.val = val
-	q.len += 1
-	return q
-}
-
-func Put(q **LLQ, val any) {
-	cur := new(LLQ)
-	cur.val = val
-	oldCur := *q
-	*q = cur
-	(*q).prev = oldCur
-	(*q).len += oldCur.len + 1
-}
-
-func (q *LLQ) Get() any {
-	return q.val
-}
-
-func Remove(q **LLQ) {
-	newCur := (*q).prev
-	(*q) = newCur
-}
-
-func Purge(q **LLQ) {
-	for (*q).prev != nil {
-		Remove(q)
-	}
-	(*q).val = nil
-	(*q).len = 0
-}
-
-func (q *LLQ) Purge() {
-	for q.prev != nil {
-		Remove(&q)
-	}
-}
-
-func (q *LLQ) Len() int {
-	return q.len
+// NewQueue creates new instance of relevant queue
+func NewQueue[T Queue](cap int) {
+	// TBD
 }
