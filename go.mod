@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/golang/protobuf v1.5.2
+	github.com/onsi/gomega v1.20.1
 	github.com/quic-go/quic-go v0.33.0
 	github.com/stretchr/testify v1.5.1
 	golang.org/x/sys v0.3.0

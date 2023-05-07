@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/config"
@@ -88,6 +89,9 @@ func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 	resp, err := qp.decoder.DecodeResponse(responseBytes[:])
 	if err != nil {
 		return nil, err
+	}
+	if resp.ResponseType == quicq.ResponseType_RESPONSE_ERROR {
+		return nil, errors.New(resp.GetErrResponse().GetDetails())
 	}
 	return resp, nil
 }

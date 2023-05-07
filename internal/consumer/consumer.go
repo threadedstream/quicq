@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/client"
@@ -159,6 +160,9 @@ func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
 	resp, err := qc.decoder.DecodeResponse(responseBytes[:])
 	if err != nil {
 		return nil, err
+	}
+	if resp.ResponseType == quicq.ResponseType_RESPONSE_ERROR {
+		return nil, errors.New(resp.GetErrResponse().GetDetails())
 	}
 	return resp, nil
 }

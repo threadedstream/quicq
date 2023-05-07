@@ -8,11 +8,7 @@ message broker over quic
 Есть идея назвать paper Quic + Message Queue = quicq или Очередь сообщений поверх протокола quic  
 
 ## Abstract (Аннотация)
-    Очереди сообщений стали неотъемлемой частью построения сложных приложений на базе микросервисной архитектуры.
-    Такие их представители как Kafka, RabbitMQ способны обрабатывать от нескольких тысяч до миллиона сообщений в секунду. 
-    В данной статье представлена архитектура самописной очереди сообщений quicq, работающей поверх протокола quic, пришедшего 
-    на замену tcp+tls. 
-    Надо придумать аннотацию, но будет что-то похожее на смесь message queue, quic и моей реализации mq
+    
 
 ## I. Introduction (Введение)
     
@@ -72,13 +68,22 @@ message broker over quic
 head of line blocking 
 rabbitmq has an idea of channels which resembles http2/streams 
 
+### Experiments
+#### 1P1C 
+Broker - 3% CPU, 0.1% MEM on avg
+Consumer - 1% CPU, 0.1% MEM on avg
+Producer - 1% CPU, 0.1% MEM on avg
+
+
 ### TODOs
 
-[x] Try, for the sake of experiment, sending huge number of data through tcp and QUIC pipes. Evaluate performance   
-[x] Find comparison graphs of quic cubic and tcp cubic \
-[x] spdy - read about that as well
-
-add more brokers to the scene and implement leader election mechanism?
+- [x] Try, for the sake of experiment, sending huge number of data through tcp and QUIC pipes. Evaluate performance   
+- [x] Find comparison graphs of quic cubic and tcp cubic \
+- [x] spdy - read about that as well
+- [x] Add a global config with parameters like broker address, queue length and etc.. \
+- [ ] Define ErrorResponse object to report errors to clients \
+- [ ] Add more brokers to the scene and implement leader election mechanism? \
+- [ ] Properly close connection  
 
 write down your pc specs you ran tests on
 
@@ -117,3 +122,4 @@ https://www.rabbitmq.com/reliability.html
 https://www.rabbitmq.com/semantics.html - 
 
 https://protobuf.dev - документация к Google Protobuf
+

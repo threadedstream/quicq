@@ -7,16 +7,10 @@ import (
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/consumer"
-	"github.com/threadedstream/quicthing/internal/prof"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 )
 
 func main() {
-	cancelCPU := prof.MustProfCPU("cpu_consumer.prof")
-	cancelMem := prof.MustProfMem("mem_consumer.prof")
-
-	defer func() { cancelCPU(); cancelMem() }()
-
 	ctx := context.Background()
 	c := consumer.New()
 	if err := c.Connect(ctx); err != nil {
@@ -30,7 +24,7 @@ func main() {
 	log.Printf("Got response with response type %s", quicq.ResponseType_name[int32(resp.GetResponseType())])
 
 	wg := &sync.WaitGroup{}
-	ticker := time.NewTicker(time.Minute * 1)
+	ticker := time.NewTicker(time.Minute * 5)
 
 	cancelCtx, cancel := context.WithCancel(ctx)
 	dataChan, errChan := c.Notify(cancelCtx)

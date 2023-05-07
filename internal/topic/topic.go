@@ -89,8 +89,13 @@ func (qt *QuicQTopic) EvictConsumer(consumerID int64) error {
 }
 
 func (qt *QuicQTopic) GetRecordBatch() ([]*quicq.Record, error) {
+	if qt.q.Len() == 0 {
+		return nil, queue.QEmptyErr
+	}
 	var recs []*quicq.Record
-	for r, err := qt.q.Get(); err == nil; {
+	r, err := qt.q.Get()
+	for ; err == nil; r, err = qt.q.Get() {
+		println(r)
 		recs = append(recs, r.(*quicq.Record))
 	}
 	return recs, nil

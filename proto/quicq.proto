@@ -22,6 +22,7 @@ enum ResponseType {
   RESPONSE_FETCH_TOPIC_METADATA = 3;
   RESPONSE_POLL = 4;
   RESPONSE_POST = 5;
+  RESPONSE_ERROR = 6;
 }
 
 message Request {
@@ -43,6 +44,7 @@ message Response {
     FetchTopicMetadataResponse fetchTopicMetadataResponse = 4;
     PollResponse pollResponse = 5;
     PostResponse postResponse = 6;
+    ErrorResponse errResponse = 7;
   }
 }
 
@@ -89,6 +91,11 @@ message PostRequest{
 
 message PostResponse {
   int64 offset = 2;
+}
+
+// TODO(threadedstream): define "kinds of errors" enum 
+message ErrorResponse {
+  string details = 1;
 }
 
 message Record {

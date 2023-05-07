@@ -3,11 +3,14 @@ package broker
 import (
 	"context"
 	"errors"
-	"github.com/threadedstream/quicthing/internal/config"
-	"github.com/threadedstream/quicthing/internal/encoder"
+	"fmt"
+	errors2 "github.com/onsi/gomega/gstruct/errors"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/threadedstream/quicthing/internal/config"
+	"github.com/threadedstream/quicthing/internal/encoder"
 
 	"github.com/threadedstream/quicthing/internal/topic"
 
@@ -18,6 +21,10 @@ import (
 
 const (
 	ctxPollTimeout = 100 * time.Millisecond
+)
+
+const (
+	errOccurredFmt = "error cause: %s"
 )
 
 var (
@@ -53,6 +60,10 @@ func New() *QuicQBroker {
 
 func (qb *QuicQBroker) Run(ctx context.Context) error {
 	return qb.run(ctx)
+}
+
+func (qb *QuicQBroker) Shutdown() error {
+	return qb.server.Shutdown()
 }
 
 func (qb *QuicQBroker) run(ctx context.Context) error {
@@ -113,16 +124,20 @@ outer:
 				continue outer
 			}
 			req, err := qb.decoder.DecodeRequest(p[:])
-
 			if err != nil {
-				stream.Send([]byte("gfy maaan"))
+				stream.Send([]byte(fmt.Sprintf(errOccurredFmt, err.Error())))
 				continue outer
 			}
 
-			resp, _ := qb.executeRequest(streamCtx, req)
+			resp, err := qb.executeRequest(streamCtx, req)
+			if err != nil {
+				qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, err.Error()))
+				continue outer
+			}
 			bs, err := qb.encoder.EncodeResponse(resp)
 			if err != nil {
 				log.Println("failed to encode response: ", err.Error())
+				qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, "internal server error"))
 				continue outer
 			}
 			// write the message back
@@ -181,9 +196,19 @@ func (qb *QuicQBroker) doPoll(req *quicq.PollRequest) (*quicq.Response, error) {
 		}
 	}
 
+	var errs errors2.AggregateError
 	for _, t := range topics {
-		recs, _ := t.GetRecordBatch()
+		recs, err := t.GetRecordBatch()
+		if err != nil {
+			err = fmt.Errorf("<%s> = %s", t.Name(), err.Error())
+			errs = append(errs, err)
+			continue
+		}
 		records = append(records, recs...)
+	}
+
+	if errs != nil {
+		return nil, errors.New(errs.Error())
 	}
 
 	return &quicq.Response{
@@ -257,4 +282,24 @@ func (qb *QuicQBroker) getOrAddTopic(name string) topic.Topic {
 		qb.topics = append(qb.topics, top)
 	}
 	return top
+}
+
+func (qb *QuicQBroker) sendErr(stream conn.Stream, cause string) error {
+	errResp := qb.formErrResponse(cause)
+	bs, err := qb.encoder.EncodeResponse(errResp)
+	if err != nil {
+		return err
+	}
+	return func() error { _, e := stream.Send(bs); return e }()
+}
+
+func (qb *QuicQBroker) formErrResponse(cause string) *quicq.Response {
+	return &quicq.Response{
+		ResponseType: quicq.ResponseType_RESPONSE_ERROR,
+		Response: &quicq.Response_ErrResponse{
+			ErrResponse: &quicq.ErrorResponse{
+				Details: cause,
+			},
+		},
+	}
 }
