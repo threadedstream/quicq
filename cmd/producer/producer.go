@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
-	"flag"
-	"github.com/threadedstream/quicthing/internal/publisher"
 	"log"
+
+	"github.com/threadedstream/quicthing/internal/prof"
+	"github.com/threadedstream/quicthing/internal/publisher"
 )
 
 func main() {
-	// parse flags
-	flag.Parse()
+	cancelCPU := prof.MustProfCPU("cpu_producer.prof")
+	cancelMem := prof.MustProfMem("mem_producer.prof")
+
+	defer func() { cancelCPU(); cancelMem() }()
 
 	ctx := context.Background()
 	p := publisher.New()

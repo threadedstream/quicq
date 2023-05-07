@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/threadedstream/quicthing/internal/config"
 	"github.com/threadedstream/quicthing/internal/encoder"
 
 	"github.com/threadedstream/quicthing/internal/client"
@@ -36,9 +37,8 @@ func (qp *QuicQProducer) Connect(ctx context.Context) error {
 }
 
 func (qp *QuicQProducer) connect(ctx context.Context) error {
-	const brokerAddr = "127.0.0.1:9999"
 	qp.client = client.New()
-	if err := qp.client.Dial(ctx, brokerAddr); err != nil {
+	if err := qp.client.Dial(ctx, config.BrokerConfig.BrokerAddr()); err != nil {
 		return err
 	}
 	return nil

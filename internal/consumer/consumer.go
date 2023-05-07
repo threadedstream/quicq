@@ -2,11 +2,13 @@ package consumer
 
 import (
 	"context"
+	"time"
+
 	"github.com/threadedstream/quicthing/internal/client"
 	"github.com/threadedstream/quicthing/internal/common"
+	"github.com/threadedstream/quicthing/internal/config"
 	"github.com/threadedstream/quicthing/internal/encoder"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
-	"time"
 )
 
 // Consumer is a consumer interface
@@ -41,9 +43,8 @@ func (qc *QuicQConsumer) Connect(ctx context.Context) error {
 }
 
 func (qc *QuicQConsumer) connect(ctx context.Context) error {
-	const brokerAddr = "127.0.0.1:9999"
 	qc.client = client.New()
-	if err := qc.client.Dial(ctx, brokerAddr); err != nil {
+	if err := qc.client.Dial(ctx, config.BrokerConfig.BrokerAddr()); err != nil {
 		return err
 	}
 	return nil
