@@ -117,9 +117,10 @@ https://docs.confluent.io/kafka/design/delivery-semantics.html
 
 https://dev.to/behalf/event-ordering-with-apache-kafka-2gb5
 
-https://www.rabbitmq.com/reliability.html
+RabbitMQ, Reliability Guide, https://www.rabbitmq.com/reliability.html
 
-https://www.rabbitmq.com/semantics.html - 
+RabbitMQ, Broker Semantics, https://www.rabbitmq.com/semantics.html
 
-https://protobuf.dev - документация к Google Protobuf
+Google,Protocol Buffers, https://protobuf.dev - 
 
+Репозиторий с кодом quicq, https://github.com/threadedstream/quicq 
