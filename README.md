@@ -102,7 +102,7 @@ Puneet Kumar, QUIC - A Quick Study, arxiv.org, https://arxiv.org/pdf/2010.03059.
 Puneet Kumar and Behnam Dezfouli. Implementation and analysis of quic for mqtt.
 Computer Networks, 150:28–45, 2019, https://arxiv.org/pdf/1810.07730.pdf
 
-Репозиторий с кодом rabbitmq сервера, https://github.com/rabbitmq/rabbitmq-server
+Репозиторий с кодом сервера RabbitMQ, https://github.com/rabbitmq/rabbitmq-server
 
 AMQP по-русски, 2009, https://habr.com/ru/articles/62502/ 
 
@@ -114,4 +114,6 @@ https://dev.to/behalf/event-ordering-with-apache-kafka-2gb5
 
 https://www.rabbitmq.com/reliability.html
 
-https://www.rabbitmq.com/semantics.html
+https://www.rabbitmq.com/semantics.html - 
+
+https://protobuf.dev - документация к Google Protobuf
