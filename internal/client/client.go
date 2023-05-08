@@ -8,7 +8,6 @@ import (
 )
 
 type Client interface {
-	Dial(context.Context, string) (conn.Connection, error)
 	RequestStream() (conn.Stream, error)
 	Send(data []byte) error
 	Rcv(data []byte) error

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net"
 	"time"
 
 	"github.com/quic-go/quic-go"
@@ -12,10 +13,8 @@ import (
 type Server interface {
 	Serve(addr string) error
 	AcceptClient(context.Context) (conn.Connection, error)
-	Handle(command any) (any, error)
 	AddOnShutdownCallback(fn func())
 	Shutdown() error
-	Close() error
 }
 
 // QuicServer is a quic server
@@ -36,6 +35,7 @@ func (qs *QuicServer) Serve(addr string) error {
 	conf := &quic.Config{
 		EnableDatagrams: true,
 		MaxIdleTimeout:  time.Second * 10,
+		Allow0RTT:       func(_ net.Addr) bool { return true },
 	}
 	listener, err := quic.ListenAddr(addr, tlsConf, conf)
 	if err != nil {

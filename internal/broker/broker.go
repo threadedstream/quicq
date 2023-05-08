@@ -36,7 +36,7 @@ type Broker interface {
 }
 
 type QuicQBroker struct {
-	server        *server.QuicServer
+	server        server.Server
 	mu            *sync.Mutex
 	subscriptions map[int64][]string
 	topics        []topic.Topic
