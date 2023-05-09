@@ -3,6 +3,7 @@ package consumer
 import (
 	"context"
 	"errors"
+	"github.com/threadedstream/quicthing/internal/client/tcp"
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/client"
@@ -24,7 +25,7 @@ type Consumer interface {
 // QuicQConsumer is a Consumer implementation
 type QuicQConsumer struct {
 	id      int64
-	client  *client.QuicQClient
+	client  client.Client
 	encoder encoder.Encoder
 	decoder encoder.Decoder
 }
@@ -44,8 +45,8 @@ func (qc *QuicQConsumer) Connect(ctx context.Context) error {
 }
 
 func (qc *QuicQConsumer) connect(ctx context.Context) error {
-	qc.client = client.New()
-	if err := qc.client.Dial(ctx, config.BrokerConfig.BrokerAddr()); err != nil {
+	var err error
+	if qc.client, err = tcp.Dial(ctx, config.BrokerConfig.BrokerAddr()); err != nil {
 		return err
 	}
 	return nil

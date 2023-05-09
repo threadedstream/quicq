@@ -4,19 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	errors2 "github.com/onsi/gomega/gstruct/errors"
+	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
+	"io"
 	"log"
 	"sync"
 	"time"
 
+	errors2 "github.com/onsi/gomega/gstruct/errors"
 	"github.com/threadedstream/quicthing/internal/config"
-	"github.com/threadedstream/quicthing/internal/encoder"
-
-	"github.com/threadedstream/quicthing/internal/topic"
-
 	"github.com/threadedstream/quicthing/internal/conn"
+	"github.com/threadedstream/quicthing/internal/encoder"
 	"github.com/threadedstream/quicthing/internal/server"
-	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
+	serverTCP "github.com/threadedstream/quicthing/internal/server/tcp"
+	"github.com/threadedstream/quicthing/internal/topic"
 )
 
 const (
@@ -47,7 +47,7 @@ type QuicQBroker struct {
 
 func New() *QuicQBroker {
 	broker := &QuicQBroker{
-		server:        new(server.QuicServer),
+		server:        new(serverTCP.QuicQTCPServer),
 		mu:            new(sync.Mutex),
 		topics:        make([]topic.Topic, 0),
 		subscriptions: make(map[int64][]string),
@@ -119,13 +119,20 @@ outer:
 		case <-time.After(ctxPollTimeout):
 			var p [1024]byte
 			_, err := stream.Rcv(p[:])
+			// TODO(threadedstream): tcp connection "streams" are not context-aware, so return from goroutine
+			// once EOF is received
 			if err != nil {
+				if err == io.EOF {
+					println("closing stream...")
+					return
+				}
 				stream.Log("Failed to read a message: %s\n", err.Error())
 				continue outer
 			}
+			log.Println("got some data in")
 			req, err := qb.decoder.DecodeRequest(p[:])
 			if err != nil {
-				stream.Send([]byte(fmt.Sprintf(errOccurredFmt, err.Error())))
+				qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, err.Error()))
 				continue outer
 			}
 

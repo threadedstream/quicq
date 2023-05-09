@@ -28,6 +28,7 @@ func (ts *QuicQTCPServer) Serve(addr string) error {
 		ts.conn = &tcp.QuicQTcpConn{
 			TCPListener: listener,
 		}
+		return nil
 	}
 	return errors.New("could not parse address")
 }
@@ -37,7 +38,7 @@ func (ts *QuicQTCPServer) AcceptClient(ctx context.Context) (conn.Connection, er
 	if err != nil {
 		return nil, err
 	}
-	return &tcp.QuicQTcpConn{TCPConn: c}, nil
+	return &tcp.QuicQTcpConn{TCPConn: c, TCPListener: ts.conn.TCPListener}, nil
 }
 
 func (ts *QuicQTCPServer) AddOnShutdownCallback(fn func()) {

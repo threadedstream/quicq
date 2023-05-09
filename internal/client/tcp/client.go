@@ -35,6 +35,22 @@ func Dial(ctx context.Context, addr string) (*QuicQTCPClient, error) {
 }
 
 func (tc *QuicQTCPClient) RequestStream() (conn.Stream, error) {
-	_, err := net.DialTCP("tcp4", nil, tc.raddr)
-	return nil, err
+	c, err := net.DialTCP("tcp4", nil, tc.raddr)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &tcp.QuicQTcpStream{
+		Conn:   c,
+		Ctx:    ctx,
+		Cancel: cancel,
+	}, nil
+}
+
+func (tc *QuicQTCPClient) Send(_ []byte) error {
+	return nil
+}
+
+func (tc *QuicQTCPClient) Rcv(_ []byte) error {
+	return nil
 }

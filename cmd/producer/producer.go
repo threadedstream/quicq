@@ -2,9 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
-
 	"github.com/threadedstream/quicthing/internal/publisher"
+	"log"
 )
 
 func main() {

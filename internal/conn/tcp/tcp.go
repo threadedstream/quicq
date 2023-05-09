@@ -23,9 +23,9 @@ func (tc *QuicQTcpConn) AcceptStream(ctx context.Context) (conn.Stream, error) {
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	return &QuicQTcpStream{
-		ctx:    ctx,
-		cancel: cancel,
-		conn:   childConn,
+		Ctx:    ctx,
+		Cancel: cancel,
+		Conn:   childConn,
 	}, nil
 }
 
@@ -42,21 +42,21 @@ func (tc *QuicQTcpConn) Log(format string, args ...any) {
 }
 
 func (tc *QuicQTcpConn) RemoteAddr() net.Addr {
-	return nil
+	return &net.TCPAddr{}
 }
 
 type QuicQTcpStream struct {
-	conn   *net.TCPConn
-	ctx    context.Context
-	cancel context.CancelFunc
+	Conn   *net.TCPConn
+	Ctx    context.Context
+	Cancel context.CancelFunc
 }
 
 func (ts *QuicQTcpStream) Send(p []byte) (int, error) {
-	return ts.conn.Write(p)
+	return ts.Conn.Write(p)
 }
 
 func (ts *QuicQTcpStream) Rcv(p []byte) (int, error) {
-	return ts.conn.Read(p)
+	return ts.Conn.Read(p)
 }
 
 func (ts *QuicQTcpStream) Log(format string, args ...any) {
@@ -65,12 +65,12 @@ func (ts *QuicQTcpStream) Log(format string, args ...any) {
 }
 
 func (ts *QuicQTcpStream) Context() context.Context {
-	return ts.ctx
+	return ts.Ctx
 }
 
 func (ts *QuicQTcpStream) Shutdown() error {
-	_ = ts.conn.CloseRead()
-	_ = ts.conn.CloseWrite()
-	ts.cancel()
-	return ts.conn.Close()
+	_ = ts.Conn.CloseRead()
+	_ = ts.Conn.CloseWrite()
+	ts.Cancel()
+	return ts.Conn.Close()
 }
