@@ -3,7 +3,6 @@ package publisher
 import (
 	"context"
 	"errors"
-	"github.com/threadedstream/quicthing/internal/client/tcp"
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/config"
@@ -40,7 +39,7 @@ func (qp *QuicQProducer) Connect(ctx context.Context) error {
 
 func (qp *QuicQProducer) connect(ctx context.Context) error {
 	var err error
-	if qp.client, err = tcp.Dial(ctx, config.BrokerConfig.BrokerAddr()); err != nil {
+	if qp.client, err = client.Dial(ctx, config.BrokerConfig.BrokerAddr()); err != nil {
 		return err
 	}
 	return nil
@@ -78,11 +77,9 @@ func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 		_ = stream.Shutdown()
 	}()
 
-	var n int
-	if n, err = stream.Send(bs); err != nil {
+	if _, err = stream.Send(bs); err != nil {
 		return nil, err
 	}
-	println(n)
 
 	var responseBytes [1024]byte
 	if _, err = stream.Rcv(responseBytes[:]); err != nil {
