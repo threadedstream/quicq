@@ -4,11 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	clientTCP "github.com/threadedstream/quicthing/internal/client/tcp"
 	"github.com/threadedstream/quicthing/internal/conn"
 	"github.com/threadedstream/quicthing/internal/server/tcp"
+)
+
+const (
+	messageGoal int64 = 5000
+)
+
+var (
+	processedMessages atomic.Int64
 )
 
 const (
@@ -21,7 +30,20 @@ func main() {
 	if err := server.Serve(address); err != nil {
 		log.Fatal(err)
 	}
+
 	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			time.Sleep(10 * time.Millisecond)
+			if processedMessages.Load() >= messageGoal {
+				println("done")
+				cancel()
+			}
+			println(processedMessages.Load())
+		}
+	}()
+
 	go client(ctx, cancel)
 	for {
 		select {
@@ -53,7 +75,6 @@ outer:
 				continue outer
 			}
 			go handleStream(ctx, stream)
-			time.Sleep(1 * time.Second)
 		}
 	}
 }
@@ -64,7 +85,7 @@ func handleStream(ctx context.Context, stream conn.Stream) {
 	if err != nil {
 		return
 	}
-	log.Println("client message: " + string(p[:]))
+	processedMessages.Add(1)
 	stream.Shutdown()
 	return
 }

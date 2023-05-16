@@ -4,10 +4,19 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/consumer"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
+)
+
+const (
+	messageGoal int64 = 5000
+)
+
+var (
+	processedMessages atomic.Int64
 )
 
 func main() {
@@ -24,14 +33,27 @@ func main() {
 	log.Printf("Got response with response type %s", quicq.ResponseType_name[int32(resp.GetResponseType())])
 
 	wg := &sync.WaitGroup{}
-	ticker := time.NewTicker(time.Minute * 5)
+	ticker := time.NewTicker(time.Minute * 10)
 
 	cancelCtx, cancel := context.WithCancel(ctx)
 	dataChan, errChan := c.Notify(cancelCtx)
 
+	go func() {
+		for {
+			time.Sleep(10 * time.Millisecond)
+			if processedMessages.Load() >= messageGoal {
+				cancel()
+			}
+			println(processedMessages.Load())
+		}
+	}()
+
 outer:
 	for {
 		select {
+		case <-cancelCtx.Done():
+			println("processed all messages")
+			break outer
 		case <-ticker.C:
 			cancel()
 			break outer
@@ -53,7 +75,5 @@ outer:
 
 func handleRecords(wg *sync.WaitGroup, records []*quicq.Record) {
 	defer wg.Done()
-	for _, rec := range records {
-		log.Printf("[%s] => %s", rec.GetKey(), rec.GetPayload())
-	}
+	processedMessages.Add(int64(len(records)))
 }

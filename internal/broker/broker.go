@@ -4,18 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 	"io"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 
 	errors2 "github.com/onsi/gomega/gstruct/errors"
 	"github.com/threadedstream/quicthing/internal/config"
 	"github.com/threadedstream/quicthing/internal/conn"
 	"github.com/threadedstream/quicthing/internal/encoder"
 	"github.com/threadedstream/quicthing/internal/server"
-	serverTCP "github.com/threadedstream/quicthing/internal/server/tcp"
 	"github.com/threadedstream/quicthing/internal/topic"
 )
 
@@ -47,7 +47,7 @@ type QuicQBroker struct {
 
 func New() *QuicQBroker {
 	broker := &QuicQBroker{
-		server:        new(serverTCP.QuicQTCPServer),
+		server:        new(server.QuicServer),
 		mu:            new(sync.Mutex),
 		topics:        make([]topic.Topic, 0),
 		subscriptions: make(map[int64][]string),

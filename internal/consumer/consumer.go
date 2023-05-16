@@ -3,7 +3,6 @@ package consumer
 import (
 	"context"
 	"errors"
-	"github.com/threadedstream/quicthing/internal/client/tcp"
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/client"
@@ -46,7 +45,7 @@ func (qc *QuicQConsumer) Connect(ctx context.Context) error {
 
 func (qc *QuicQConsumer) connect(ctx context.Context) error {
 	var err error
-	if qc.client, err = tcp.Dial(ctx, config.BrokerConfig.BrokerAddr()); err != nil {
+	if qc.client, err = client.Dial(ctx, config.BrokerConfig.BrokerAddr()); err != nil {
 		return err
 	}
 	return nil

@@ -2,9 +2,10 @@ package tcp
 
 import (
 	"context"
-	"github.com/threadedstream/quicthing/internal/conn"
 	"log"
 	"net"
+
+	"github.com/threadedstream/quicthing/internal/conn"
 )
 
 type QuicQTcpConn struct {

@@ -18,24 +18,18 @@ type QuicQClient struct {
 	messageBus conn.Stream
 }
 
-// New initializes QuicQClient
-func New() *QuicQClient {
-	return &QuicQClient{}
-}
-
 // Dial dials a server host
-func (qc *QuicQClient) Dial(ctx context.Context, addr string) error {
+func Dial(ctx context.Context, addr string) (*QuicQClient, error) {
 	tlsFn := conn.QuicQTLSFunc()
 	tls, err := tlsFn()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	c, err := quic.DialAddrContext(ctx, addr, tls, &quic.Config{})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	qc.Connection = c
-	return nil
+	return &QuicQClient{Connection: c}, nil
 }
 
 // RequestStream attempts to open a stream with a peer
