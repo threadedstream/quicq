@@ -4,7 +4,7 @@ import numpy as np
 
 X = np.array([1000, 2500, 5000])
 QUIC_Y = np.array([1.39, 4.13, 4.91])
-TCP_Y = np.array([1.46, 4.20, 5.81])
+TCP_Y = np.array([1.46, 4.20, 4.42])
 
 plt.xlabel('number of messages')
 plt.ylabel('time (in minutes)')
