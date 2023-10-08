@@ -7,6 +7,7 @@ import (
 
 	"github.com/threadedstream/quicthing/internal/config"
 	"github.com/threadedstream/quicthing/internal/encoder"
+	protoenc "github.com/threadedstream/quicthing/internal/encoder/protobuf"
 
 	"github.com/threadedstream/quicthing/internal/client"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
@@ -27,8 +28,8 @@ type QuicQProducer struct {
 // New initializes a QuicQProducer object
 func New() *QuicQProducer {
 	return &QuicQProducer{
-		encoder: encoder.NewProtoEncoder(),
-		decoder: encoder.NewProtoDecoder(),
+		encoder: protoenc.NewProtoEncoder(),
+		decoder: protoenc.NewProtoDecoder(),
 	}
 }
 

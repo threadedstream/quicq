@@ -96,6 +96,28 @@ Subscribe()
 
 subscriber -> Topic
 
+### Benchmark
+Running benchmark on my 8 core 2021 m1 mac book pro 16GB ram produces the following results
+```
+BenchmarkPerformanceTest-8   	     100	 202462593 ns/op    
+BenchmarkPerformanceTest-8   	     100	 202407711 ns/op    
+BenchmarkPerformanceTest-8   	     100	 202253842 ns/op    
+BenchmarkPerformanceTest-8   	     100	 202137643 ns/op    
+BenchmarkPerformanceTest-8   	     100	 202060565 ns/op    
+
+BenchmarkPerformanceTest-8   	    1000	 202305092 ns/op
+BenchmarkPerformanceTest-8   	    1000	 202551356 ns/op
+BenchmarkPerformanceTest-8   	    1000	 202169535 ns/op
+BenchmarkPerformanceTest-8   	    1000	 202363925 ns/op
+BenchmarkPerformanceTest-8   	    1000	 203832226 ns/op
+
+BenchmarkPerformanceTest-8   	   10000	 202354086 ns/op
+BenchmarkPerformanceTest-8   	   10000	 202193685 ns/op
+BenchmarkPerformanceTest-8   	   10000	 202279466 ns/op
+BenchmarkPerformanceTest-8   	   10000	 202332875 ns/op
+BenchmarkPerformanceTest-8   	   10000	 202761146 ns/op
+```
+
 **Bibliography**
 
 Prashant Kharat, Muralidhar Kulkarni, Modified QUIC protocol with congestion control for improved network performance, IET Communications https://ietresearch.onlinelibrary.wiley.com/doi/10.1049/cmu2.12154, Vol.5, Issue 9 1210-1222.

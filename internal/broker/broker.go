@@ -4,7 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	errors2 "github.com/onsi/gomega/gstruct/errors"
+	"github.com/quic-go/quic-go"
+	protoenc "github.com/threadedstream/quicthing/internal/encoder/protobuf"
+
 	"log"
 	"sync"
 	"time"
@@ -52,8 +56,8 @@ func New() *QuicQBroker {
 		topics:        make([]topic.Topic, 0),
 		subscriptions: make(map[int64][]string),
 		topicQueryMap: make(map[string]topic.Topic),
-		encoder:       encoder.NewProtoEncoder(),
-		decoder:       encoder.NewProtoDecoder(),
+		encoder:       protoenc.NewProtoEncoder(),
+		decoder:       protoenc.NewProtoDecoder(),
 	}
 	return broker
 }
@@ -70,6 +74,7 @@ func (qb *QuicQBroker) run(ctx context.Context) error {
 	if e := qb.server.Serve(config.BrokerConfig.BrokerAddr()); e != nil {
 		log.Fatalf("unable to serve: %s", e.Error())
 	}
+
 loop:
 	for {
 		select {
@@ -83,7 +88,9 @@ loop:
 				log.Println("failed to accept: " + err.Error())
 				continue loop
 			}
-			log.Printf("got a new connection: %s\n", c.RemoteAddr().String())
+			if config.BrokerConfig.Verbose() {
+				log.Printf("got a new connection: %s\n", c.RemoteAddr().String())
+			}
 			go qb.handleConnection(ctx, c)
 		}
 	}
@@ -98,10 +105,15 @@ loop:
 		case <-time.After(ctxPollTimeout):
 			stream, err := conn.AcceptStream(ctx)
 			if err != nil {
-				log.Println("ERROR: ", err.Error())
-				return
+				_, isTimeoutErr := err.(*quic.IdleTimeoutError)
+				if !isTimeoutErr {
+					log.Println("ERROR: ", err.Error())
+					return
+				}
 			}
-			go qb.handleStream(stream)
+			if stream != nil {
+				go qb.handleStream(stream)
+			}
 		}
 	}
 }
@@ -113,7 +125,6 @@ outer:
 		select {
 		case _, ok := <-streamCtx.Done():
 			if !ok {
-				println("closing stream...")
 				return
 			}
 		case <-time.After(ctxPollTimeout):

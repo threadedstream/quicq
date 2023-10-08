@@ -9,6 +9,7 @@ import (
 	"github.com/threadedstream/quicthing/internal/common"
 	"github.com/threadedstream/quicthing/internal/config"
 	"github.com/threadedstream/quicthing/internal/encoder"
+	protoenc "github.com/threadedstream/quicthing/internal/encoder/protobuf"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 )
 
@@ -33,8 +34,8 @@ type QuicQConsumer struct {
 func New() *QuicQConsumer {
 	return &QuicQConsumer{
 		id:      int64(common.IDManager.GetNextID()),
-		encoder: encoder.NewProtoEncoder(),
-		decoder: encoder.NewProtoDecoder(),
+		encoder: protoenc.NewProtoEncoder(),
+		decoder: protoenc.NewProtoDecoder(),
 	}
 }
 
@@ -105,9 +106,9 @@ func (qc *QuicQConsumer) Poll() (*quicq.Response, error) {
 }
 
 // Notify is not really a request, but an attempt to set up push model
-func (qc *QuicQConsumer) Notify(ctx context.Context) (chan *quicq.Response, chan error) {
-	dataChan := make(chan *quicq.Response, common.QueueSizeMax/2)
-	errChan := make(chan error, common.QueueSizeMax/2)
+func (qc *QuicQConsumer) Notify(ctx context.Context, pollPeriod time.Duration) (chan *quicq.Response, chan error) {
+	dataChan := make(chan *quicq.Response, common.QueueSizeMax)
+	errChan := make(chan error, common.QueueSizeMax)
 
 	go func() {
 	outer:
@@ -118,7 +119,7 @@ func (qc *QuicQConsumer) Notify(ctx context.Context) (chan *quicq.Response, chan
 				close(errChan)
 				// context canceled
 				return
-			case <-time.After(time.Millisecond * 100):
+			case <-time.After(pollPeriod):
 				resp, err := qc.Poll()
 				if err != nil {
 					errChan <- err

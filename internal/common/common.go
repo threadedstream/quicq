@@ -1,24 +1,19 @@
 package common
 
-import "sync"
+import "sync/atomic"
 
 var (
 	// IDManager handles id generation for consumer
-	IDManager = &idManager{
-		mu: new(sync.Mutex),
-	}
+	IDManager = &idManager{}
 )
 
 type idManager struct {
-	mu     *sync.Mutex
-	nextID uint64
+	nextID atomic.Int64
 }
 
 func (im *idManager) GetNextID() uint64 {
-	im.mu.Lock()
-	defer im.mu.Unlock()
-	im.nextID++
-	return im.nextID
+	val := im.nextID.Add(1)
+	return uint64(val)
 }
 
 const (

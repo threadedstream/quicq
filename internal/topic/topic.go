@@ -95,7 +95,6 @@ func (qt *QuicQTopic) GetRecordBatch() ([]*quicq.Record, error) {
 	var recs []*quicq.Record
 	r, err := qt.q.Get()
 	for ; err == nil; r, err = qt.q.Get() {
-		println(r)
 		recs = append(recs, r.(*quicq.Record))
 	}
 	return recs, nil
