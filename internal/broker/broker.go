@@ -128,13 +128,13 @@ outer:
 				return
 			}
 		case <-time.After(ctxPollTimeout):
-			var p [1024]byte
-			_, err := stream.Rcv(p[:])
+			bs, err := stream.Rcv()
 			if err != nil {
 				stream.Log("Failed to read a message: %s\n", err.Error())
 				continue outer
 			}
-			req, err := qb.decoder.DecodeRequest(p[:])
+
+			req, err := qb.decoder.DecodeRequest(bs)
 			if err != nil {
 				stream.Send([]byte(fmt.Sprintf(errOccurredFmt, err.Error())))
 				continue outer
@@ -145,12 +145,14 @@ outer:
 				qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, err.Error()))
 				continue outer
 			}
-			bs, err := qb.encoder.EncodeResponse(resp)
+
+			bs, err = qb.encoder.EncodeResponse(resp)
 			if err != nil {
 				log.Println("failed to encode response: ", err.Error())
 				qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, "internal server error"))
 				continue outer
 			}
+
 			// write the message back
 			if _, err = stream.Send(bs); err != nil {
 				stream.Log("Failed to write a message: %s\n", err.Error())
@@ -174,6 +176,8 @@ func (qb *QuicQBroker) executeRequest(ctx context.Context, req *quicq.Request) (
 		return qb.doPoll(req.GetPollRequest())
 	case quicq.RequestType_REQUEST_POST:
 		return qb.doPost(req.GetPostRequest())
+	case quicq.RequestType_REQUEST_POST_BULK:
+		return qb.doPostBulk(req.GetPostBulkRequest())
 	}
 }
 
@@ -191,6 +195,27 @@ func (qb *QuicQBroker) doPost(req *quicq.PostRequest) (*quicq.Response, error) {
 		Response: &quicq.Response_PostResponse{
 			PostResponse: &quicq.PostResponse{
 				Offset: 10,
+			},
+		},
+	}, nil
+}
+
+func (qb *QuicQBroker) doPostBulk(req *quicq.PostBulkRequest) (*quicq.Response, error) {
+	// TODO(threadedstream): define different type of mutex for locking a queue
+	qb.mu.Lock()
+	defer qb.mu.Unlock()
+	top := qb.getOrAddTopic(req.GetTopic())
+	for _, record := range req.GetRecords() {
+		err := top.Push(record)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &quicq.Response{
+		ResponseType: quicq.ResponseType_RESPONSE_POST,
+		Response: &quicq.Response_PostBulkResponse{
+			PostBulkResponse: &quicq.PostBulkResponse{
+				Offsets: []int64{},
 			},
 		},
 	}, nil

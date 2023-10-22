@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"time"
 
 	"github.com/quic-go/quic-go"
 	"github.com/threadedstream/quicthing/internal/conn"
@@ -30,7 +31,9 @@ func (qc *QuicQClient) Dial(ctx context.Context, addr string) error {
 	if err != nil {
 		return err
 	}
-	c, err := quic.DialAddrContext(ctx, addr, tls, &quic.Config{})
+	c, err := quic.DialAddrContext(ctx, addr, tls, &quic.Config{
+		MaxIdleTimeout: time.Minute * 5,
+	})
 	if err != nil {
 		return err
 	}
@@ -59,10 +62,10 @@ func (qc *QuicQClient) Send(data []byte) error {
 }
 
 // Rcv receives data from a bus
-func (qc *QuicQClient) Rcv(data []byte) error {
-	_, err := qc.messageBus.Rcv(data)
+func (qc *QuicQClient) Rcv() (bs []byte, err error) {
+	bs, err = qc.messageBus.Rcv()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return bs, nil
 }

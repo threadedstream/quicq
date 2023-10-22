@@ -18,7 +18,7 @@ import (
 // Stream is a general stream interface used throughout the app
 type Stream interface {
 	Send([]byte) (int, error)
-	Rcv([]byte) (int, error)
+	Rcv() ([]byte, error)
 	Log(string, ...any)
 	Context() context.Context
 	Shutdown() error
@@ -90,8 +90,10 @@ func (qs *QuicQStream) Send(p []byte) (int, error) {
 }
 
 // Rcv receives data from a quic stream
-func (qs *QuicQStream) Rcv(p []byte) (int, error) {
-	return qs.Stream.Read(p)
+func (qs *QuicQStream) Rcv() ([]byte, error) {
+	bs := make([]byte, 8192)
+	_, err := qs.Stream.Read(bs)
+	return bs, err
 }
 
 // Context returns stream's context

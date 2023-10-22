@@ -2,8 +2,10 @@ package producer
 
 import (
 	"context"
+	"fmt"
 	"log"
 
+	"github.com/threadedstream/quicthing/internal/common"
 	"github.com/threadedstream/quicthing/internal/publisher"
 )
 
@@ -14,8 +16,16 @@ func Main() {
 		log.Fatalf("failed to connect to server: %s", err.Error())
 	}
 
+	var messages []common.Message
+	for i := 1; i <= 100; i++ {
+		messages = append(messages, common.Message{
+			Key:     []byte(fmt.Sprintf("key%d", i)),
+			Payload: []byte(fmt.Sprintf("payload%d", i)),
+		})
+	}
+
 	for {
-		_, err := p.Post("feed-topic", []byte("mykey"), []byte("my payload"))
+		_, err := p.PostBulk("feed-topic", messages)
 		if err != nil {
 			log.Printf("error: %s", err.Error())
 		}

@@ -1,7 +1,7 @@
 package protobuf
 
 import (
-	"bytes"
+	"errors"
 
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 	"google.golang.org/protobuf/proto"
@@ -54,11 +54,13 @@ func (pd *Decoder) DecodeResponse(bs []byte) (*quicq.Response, error) {
 }
 
 func (pd *Decoder) decode(bs []byte, message proto.Message) error {
-	bs = bytes.Trim(bs, "\x00")
-	// remove trailing \xee
-	bs = bs[:len(bs)-1]
-	if err := proto.Unmarshal(bs, message); err != nil {
-		return err
+	if bs[len(bs)-1] == '\xee' {
+		bs = bs[:len(bs)-1]
+		// remove trailing \xee
+		if err := proto.Unmarshal(bs, message); err != nil {
+			return err
+		}
+		return nil
 	}
-	return nil
+	return errors.New("no trailing \"\\xee\" character")
 }

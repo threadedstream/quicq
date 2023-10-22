@@ -153,8 +153,8 @@ func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
 		return nil, err
 	}
 
-	var responseBytes [1024]byte
-	if _, err = stream.Rcv(responseBytes[:]); err != nil {
+	var responseBytes []byte
+	if responseBytes, err = stream.Rcv(); err != nil {
 		return nil, err
 	}
 

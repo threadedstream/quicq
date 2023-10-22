@@ -34,7 +34,7 @@ func (qs *QuicServer) Serve(addr string) error {
 	// try 0RTT thing
 	conf := &quic.Config{
 		EnableDatagrams: true,
-		MaxIdleTimeout:  time.Second * 10,
+		MaxIdleTimeout:  time.Minute * 5,
 		Allow0RTT:       func(_ net.Addr) bool { return true },
 	}
 	listener, err := quic.ListenAddr(addr, tlsConf, conf)

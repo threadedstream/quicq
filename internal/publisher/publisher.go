@@ -5,17 +5,18 @@ import (
 	"errors"
 	"time"
 
+	"github.com/threadedstream/quicthing/internal/client"
+	"github.com/threadedstream/quicthing/internal/common"
 	"github.com/threadedstream/quicthing/internal/config"
 	"github.com/threadedstream/quicthing/internal/encoder"
 	protoenc "github.com/threadedstream/quicthing/internal/encoder/protobuf"
-
-	"github.com/threadedstream/quicthing/internal/client"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Publisher interface {
-	Post(topic string, key, payload []byte) (*quicq.Response, error)
+	Post(topic string, message common.Message) (*quicq.Response, error)
+	PostBulk(topic string, messages []common.Message) (*quicq.Response, error)
 }
 
 // QuicQProducer is a Consumer implementation
@@ -46,17 +47,39 @@ func (qp *QuicQProducer) connect(ctx context.Context) error {
 	return nil
 }
 
-func (qp *QuicQProducer) Post(topic string, key, payload []byte) (*quicq.Response, error) {
+func (qp *QuicQProducer) Post(topic string, message common.Message) (*quicq.Response, error) {
 	req := &quicq.Request{
 		RequestType: quicq.RequestType_REQUEST_POST,
 		Request: &quicq.Request_PostRequest{
 			PostRequest: &quicq.PostRequest{
 				Topic: topic,
 				Record: &quicq.Record{
-					Key:       key,
-					Payload:   payload,
+					Key:       message.Key,
+					Payload:   message.Payload,
 					Timestamp: timestamppb.New(time.Now()),
 				},
+			},
+		},
+	}
+	return qp.do(req)
+}
+
+// PostBulk - the slow version
+func (qp *QuicQProducer) PostBulk(topic string, messages []common.Message) (*quicq.Response, error) {
+	var records []*quicq.Record
+	for _, m := range messages {
+		records = append(records, &quicq.Record{
+			Key:       m.Key,
+			Payload:   m.Payload,
+			Timestamp: timestamppb.New(time.Now()),
+		})
+	}
+	req := &quicq.Request{
+		RequestType: quicq.RequestType_REQUEST_POST_BULK,
+		Request: &quicq.Request_PostBulkRequest{
+			PostBulkRequest: &quicq.PostBulkRequest{
+				Topic:   topic,
+				Records: records,
 			},
 		},
 	}
@@ -82,8 +105,8 @@ func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 		return nil, err
 	}
 
-	var responseBytes [1024]byte
-	if _, err = stream.Rcv(responseBytes[:]); err != nil {
+	var responseBytes []byte
+	if responseBytes, err = stream.Rcv(); err != nil {
 		return nil, err
 	}
 
