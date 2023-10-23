@@ -1,6 +1,14 @@
 package main
 
-import "github.com/threadedstream/quicthing/internal/cmd/producer"
+import (
+	"log"
+
+	"github.com/threadedstream/quicthing/internal/cmd/producer"
+)
+
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
 
 func main() {
 	producer.Main()

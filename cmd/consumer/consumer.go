@@ -1,6 +1,14 @@
 package main
 
-import "github.com/threadedstream/quicthing/internal/cmd/consumer"
+import (
+	"log"
+
+	"github.com/threadedstream/quicthing/internal/cmd/consumer"
+)
+
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
 
 func main() {
 	consumer.Main()

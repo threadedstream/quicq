@@ -17,7 +17,7 @@ func Main() {
 	}
 
 	var messages []common.Message
-	for i := 1; i <= 100; i++ {
+	for i := 1; i <= 15; i++ {
 		messages = append(messages, common.Message{
 			Key:     []byte(fmt.Sprintf("key%d", i)),
 			Payload: []byte(fmt.Sprintf("payload%d", i)),

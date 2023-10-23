@@ -134,30 +134,48 @@ outer:
 				continue outer
 			}
 
+			log.Println("received exactly ", len(bs), " bytes")
+
 			req, err := qb.decoder.DecodeRequest(bs)
 			if err != nil {
-				stream.Send([]byte(fmt.Sprintf(errOccurredFmt, err.Error())))
+				log.Println("failed to decode request: ", err.Error())
+				if err = qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, err.Error())); err != nil {
+					stream.Log("failed to send error over stream, cause: %s", err)
+				}
 				continue outer
 			}
 
 			resp, err := qb.executeRequest(streamCtx, req)
 			if err != nil {
-				qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, err.Error()))
+				log.Println("failed to execute request: ", err.Error())
+				if err = qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, err.Error())); err != nil {
+					stream.Log("failed to send error over stream, cause: %s", err)
+				}
 				continue outer
 			}
 
 			bs, err = qb.encoder.EncodeResponse(resp)
 			if err != nil {
 				log.Println("failed to encode response: ", err.Error())
-				qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, "internal server error"))
+				if err = qb.sendErr(stream, fmt.Sprintf(errOccurredFmt, "internal server error")); err != nil {
+					stream.Log("failed to send error over stream, cause: ", err)
+				}
 				continue outer
 			}
 
 			// write the message back
-			if _, err = stream.Send(bs); err != nil {
+			var bytesSent int
+			if bytesSent, err = stream.Send(bs); err != nil {
 				stream.Log("Failed to write a message: %s\n", err.Error())
 				continue outer
 			}
+
+			if bytesSent != len(bs) {
+				log.Println("bytesSent != len(bs)")
+				continue outer
+			}
+
+			log.Println("sent exactly ", bytesSent, " bytes")
 		}
 	}
 }

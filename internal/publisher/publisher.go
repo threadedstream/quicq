@@ -3,6 +3,7 @@ package publisher
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/client"
@@ -89,11 +90,13 @@ func (qp *QuicQProducer) PostBulk(topic string, messages []common.Message) (*qui
 func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 	bs, err := qp.encoder.EncodeRequest(req)
 	if err != nil {
+		log.Println("failed to encode request: ", err)
 		return nil, err
 	}
 
 	stream, err := qp.client.RequestStream()
 	if err != nil {
+		log.Println("failed to request stream: ", err)
 		return nil, err
 	}
 
@@ -101,17 +104,29 @@ func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 		_ = stream.Shutdown()
 	}()
 
-	if _, err = stream.Send(bs); err != nil {
+	var bytesSent int
+	if bytesSent, err = stream.Send(bs); err != nil {
+		log.Println("failed to send stream of bytes over a stream: ", err)
 		return nil, err
 	}
+
+	if bytesSent != len(bs) {
+		log.Println("bytesSent != len(bs)")
+	}
+
+	log.Println("sent exactly ", bytesSent, " bytes")
 
 	var responseBytes []byte
 	if responseBytes, err = stream.Rcv(); err != nil {
+		log.Println("failed to receive stream of bytes from stream: ", err)
 		return nil, err
 	}
 
+	log.Println("received exactly ", len(responseBytes), " bytes")
+
 	resp, err := qp.decoder.DecodeResponse(responseBytes)
 	if err != nil {
+		log.Println("failed to decode response: ", err)
 		return nil, err
 	}
 	if resp.ResponseType == quicq.ResponseType_RESPONSE_ERROR {

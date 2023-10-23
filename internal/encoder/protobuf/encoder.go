@@ -1,15 +1,23 @@
 package protobuf
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"log"
 
+	"github.com/threadedstream/quicthing/internal/encoder"
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
 	terminatingByte = '\xee'
+)
+
+var (
+	ErrNoTrailingTerminatingCharacter   = errors.New("no trailing '\\xee' character")
+	ErrPacketDataNotEqualPacketDataSize = errors.New("len(packet.Data) != len(packet.DataSize)")
 )
 
 type Encoder struct{}
@@ -27,13 +35,25 @@ func (enc *Encoder) EncodeResponse(resp *quicq.Response) ([]byte, error) {
 }
 
 func (enc *Encoder) encode(obj proto.Message) ([]byte, error) {
-	bs, err := proto.Marshal(obj)
+	packet := new(encoder.Packet)
+	buf := bytes.Buffer{}
+
+	data, err := proto.Marshal(obj)
 	if err != nil {
 		return nil, err
 	}
-	// // note: the idea borrowed from rabbitmq protocol implementation
-	bs = append(bs, terminatingByte)
-	return bs, nil
+
+	gobEnc := gob.NewEncoder(&buf)
+
+	data = append(data, terminatingByte)
+	packet.Data = data
+	packet.DataSize = int32(len(data))
+
+	if err = gobEnc.Encode(packet); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func NewProtoDecoder() *Decoder { return &Decoder{} }
@@ -55,15 +75,28 @@ func (pd *Decoder) DecodeResponse(bs []byte) (*quicq.Response, error) {
 }
 
 func (pd *Decoder) decode(bs []byte, message proto.Message) error {
+	packet := new(encoder.Packet)
+	buf := bytes.NewBuffer(bs)
+
+	gobDec := gob.NewDecoder(buf)
+
+	if err := gobDec.Decode(packet); err != nil {
+		log.Println("LEN(BS) = ", len(bs))
+		return err
+	}
+
+	if int32(len(packet.Data)) != packet.DataSize {
+		return ErrPacketDataNotEqualPacketDataSize
+	}
+
 	// remove trailing \xee
-	if bs[len(bs)-1] == '\xee' {
-		bs = bs[:len(bs)-1]
-		if err := proto.Unmarshal(bs, message); err != nil {
+	if packet.Data[packet.DataSize-1] == terminatingByte {
+		packet.Data = packet.Data[:packet.DataSize-1]
+		if err := proto.Unmarshal(packet.Data, message); err != nil {
 			return err
 		}
 		return nil
 	}
 
-	log.Print("len of contents of bs ", len(bs))
-	return errors.New("no trailing '\\xee' character")
+	return ErrNoTrailingTerminatingCharacter
 }

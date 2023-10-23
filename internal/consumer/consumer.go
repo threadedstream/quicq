@@ -3,6 +3,7 @@ package consumer
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/threadedstream/quicthing/internal/client"
@@ -137,11 +138,13 @@ func (qc *QuicQConsumer) Notify(ctx context.Context, pollPeriod time.Duration) (
 func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
 	bs, err := qc.encoder.EncodeRequest(req)
 	if err != nil {
+		log.Println("failed to encode request: ", err)
 		return nil, err
 	}
 
 	stream, err := qc.client.RequestStream()
 	if err != nil {
+		log.Println("failed to request stream: ", err)
 		return nil, err
 	}
 
@@ -149,19 +152,31 @@ func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
 		_ = stream.Shutdown()
 	}()
 
-	if _, err = stream.Send(bs); err != nil {
+	var bytesSent int
+	if bytesSent, err = stream.Send(bs); err != nil {
+		log.Println("failed to send stream of bytes over a stream: ", err)
 		return nil, err
 	}
+
+	if bytesSent != len(bs) {
+		log.Println("bytesSent != len(bs)")
+	}
+
+	log.Println("sent exactly ", bytesSent, " bytes")
 
 	var responseBytes []byte
 	if responseBytes, err = stream.Rcv(); err != nil {
 		return nil, err
 	}
 
+	log.Println("received exactly ", len(responseBytes), " bytes")
+
 	resp, err := qc.decoder.DecodeResponse(responseBytes)
 	if err != nil {
+		log.Println("failed to decode response: ", err)
 		return nil, err
 	}
+
 	if resp.ResponseType == quicq.ResponseType_RESPONSE_ERROR {
 		return nil, errors.New(resp.GetErrResponse().GetDetails())
 	}
