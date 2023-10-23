@@ -158,7 +158,7 @@ func (qc *QuicQConsumer) do(req *quicq.Request) (*quicq.Response, error) {
 		return nil, err
 	}
 
-	resp, err := qc.decoder.DecodeResponse(responseBytes[:])
+	resp, err := qc.decoder.DecodeResponse(responseBytes)
 	if err != nil {
 		return nil, err
 	}

@@ -110,7 +110,7 @@ func (qp *QuicQProducer) do(req *quicq.Request) (*quicq.Response, error) {
 		return nil, err
 	}
 
-	resp, err := qp.decoder.DecodeResponse(responseBytes[:])
+	resp, err := qp.decoder.DecodeResponse(responseBytes)
 	if err != nil {
 		return nil, err
 	}

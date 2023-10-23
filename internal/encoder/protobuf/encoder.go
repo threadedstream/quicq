@@ -2,6 +2,7 @@ package protobuf
 
 import (
 	"errors"
+	"log"
 
 	"github.com/threadedstream/quicthing/pkg/proto/quicq/v1"
 	"google.golang.org/protobuf/proto"
@@ -30,7 +31,7 @@ func (enc *Encoder) encode(obj proto.Message) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// note: the idea borrowed from rabbitmq protocol implementation
+	// // note: the idea borrowed from rabbitmq protocol implementation
 	bs = append(bs, terminatingByte)
 	return bs, nil
 }
@@ -54,13 +55,15 @@ func (pd *Decoder) DecodeResponse(bs []byte) (*quicq.Response, error) {
 }
 
 func (pd *Decoder) decode(bs []byte, message proto.Message) error {
+	// remove trailing \xee
 	if bs[len(bs)-1] == '\xee' {
 		bs = bs[:len(bs)-1]
-		// remove trailing \xee
 		if err := proto.Unmarshal(bs, message); err != nil {
 			return err
 		}
 		return nil
 	}
-	return errors.New("no trailing \"\\xee\" character")
+
+	log.Print("len of contents of bs ", len(bs))
+	return errors.New("no trailing '\\xee' character")
 }

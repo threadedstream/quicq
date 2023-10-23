@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -92,7 +93,12 @@ func (qs *QuicQStream) Send(p []byte) (int, error) {
 // Rcv receives data from a quic stream
 func (qs *QuicQStream) Rcv() ([]byte, error) {
 	bs := make([]byte, 8192)
-	_, err := qs.Stream.Read(bs)
+	n, err := qs.Stream.Read(bs)
+	if n <= len(bs) {
+		bs = bs[:n]
+	} else {
+		return nil, errors.New("n > len(bs)")
+	}
 	return bs, err
 }
 
