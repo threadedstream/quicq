@@ -92,7 +92,7 @@ func (qs *QuicQStream) Send(p []byte) (int, error) {
 
 // Rcv receives data from a quic stream
 func (qs *QuicQStream) Rcv() ([]byte, error) {
-	bs := make([]byte, 8192)
+	bs := make([]byte, 8192*2)
 	n, err := qs.Stream.Read(bs)
 	if n <= len(bs) {
 		bs = bs[:n]
